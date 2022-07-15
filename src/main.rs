@@ -5,6 +5,9 @@ use macroquad::prelude::*;
 
 static SOUND: &[u8; 17937] = include_bytes!("examples_sound.ogg");
 
+// https://crates.io/crates/collider ?
+// https://rapier.rs/docs/ ?
+
 #[macroquad::main("Game")]
 async fn main() {
     // ogg exported from audacity seems to work well.
@@ -15,7 +18,7 @@ async fn main() {
     macroquad::audio::play_sound_once(s);
 
     loop {
-        let mut _x = Camera2D::from_display_rect(Rect {
+        let mut x = Camera2D::from_display_rect(Rect {
             x: 0.,
             y: 0.,
             w: 100.,
@@ -26,8 +29,8 @@ async fn main() {
         // that may be a bit more complicated. hmmm. depends on the game?
         //
         // this is measured from the bottom left of the screen, as x,y,width,height
-        _x.viewport = Some((500, 0, 800, 600));
-        macroquad::camera::set_camera(&_x);
+        x.viewport = Some((500, 0, 800, 600));
+        macroquad::camera::set_camera(&x);
 
         clear_background(RED);
 
