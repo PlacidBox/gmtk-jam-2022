@@ -8,6 +8,8 @@ static SOUND: &[u8; 17937] = include_bytes!("examples_sound.ogg");
 // https://crates.io/crates/collider ?
 // https://rapier.rs/docs/ ?
 
+// https://opengameart.org/
+
 #[macroquad::main("Game")]
 async fn main() {
     // ogg exported from audacity seems to work well.
