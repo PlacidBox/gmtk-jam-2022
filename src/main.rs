@@ -1,16 +1,14 @@
+#![windows_subsystem = "windows"]
+
 use macroquad::camera::Camera2D;
 use macroquad::prelude::*;
 
-#[macroquad::main("BasicShapes")]
-async fn main() {
-    for _ in 1..120 {
-        clear_background(BLACK);
-        draw_text("Loading", 20.0, 20.0, 20.0, WHITE);
-        next_frame().await;
-    }
+static SOUND: &[u8; 17937] = include_bytes!("examples_sound.ogg");
 
+#[macroquad::main("Game")]
+async fn main() {
     // ogg exported from audacity seems to work well.
-    let s = macroquad::audio::load_sound("examples_sound.ogg")
+    let s = macroquad::audio::load_sound_from_bytes(SOUND)
         .await
         .unwrap();
 
