@@ -1,10 +1,10 @@
+mod assets;
+
 use assets::Assets;
 // #![windows_subsystem = "windows"]
 use macroquad::audio::{play_sound_once, PlaySoundParams};
 use macroquad::camera::Camera2D;
 use macroquad::prelude::*;
-
-mod assets;
 
 const TICKS_PER_SEC: i32 = 60;
 const TICK_RATE: f64 = 1.0 / TICKS_PER_SEC as f64;
@@ -106,7 +106,6 @@ enum PlayerState {
 struct GameState {
     game_over: bool,
     tick: i32,
-    score: i32,
 
     player_pos: Vec2,
     player_dir: Vec2,
@@ -140,7 +139,6 @@ impl Default for GameState {
         Self {
             game_over: false,
             tick: 0,
-            score: 0,
 
             player_pos: world_centre,
             player_dir: vec2(0.0, 0.0),
@@ -161,7 +159,7 @@ fn tick(state: &mut GameState, ass: &Assets) {
     }
     state.tick += 1;
 
-    tick_player(state);
+    tick_player(state, ass);
     tick_knife(state);
     tick_check_enemy_death(state, ass);
     tick_spawner(state);
@@ -172,7 +170,7 @@ fn tick(state: &mut GameState, ass: &Assets) {
     }
 }
 
-fn tick_player(state: &mut GameState) {
+fn tick_player(state: &mut GameState, ass: &Assets) {
     if state.player_state() == PlayerState::Walk || state.player_state() == PlayerState::Recover {
         let up = is_key_down(KeyCode::W) || is_key_down(KeyCode::Up);
         let left = is_key_down(KeyCode::A) || is_key_down(KeyCode::Left);
@@ -195,6 +193,7 @@ fn tick_player(state: &mut GameState) {
             is_key_down(KeyCode::Space) && state.player_state() != PlayerState::Recover;
         if start_roll {
             state.player_rolling_until = state.tick + PLAYER_ROLL_TICKS;
+            play_sound_once(ass.roll);
         }
     }
     let speed_mul = match state.player_state() {
