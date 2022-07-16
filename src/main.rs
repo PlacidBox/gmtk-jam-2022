@@ -159,11 +159,8 @@ fn tick(state: &mut GameState) {
 
     tick_player(state);
     tick_knife(state);
-
-    // check for enemy death
-
-    // check for player death
-
+    tick_check_enemy_death(state);
+    tick_check_player_death(state);
     tick_spawner(state);
     tick_enemies(state);
 }
@@ -209,6 +206,12 @@ fn tick_knife(state: &mut GameState) {
         state.knife_dir = state.player_dir
     };
     state.knife_pos = state.player_pos + state.knife_dir * KINFE_REACH;
+}
+
+fn tick_check_enemy_death(state: &mut GameState) {
+}
+
+fn tick_check_player_death(state: &mut GameState) {
 }
 
 fn tick_spawner(state: &mut GameState) {
