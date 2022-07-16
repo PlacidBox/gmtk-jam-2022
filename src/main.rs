@@ -160,9 +160,12 @@ fn tick(state: &mut GameState) {
     tick_player(state);
     tick_knife(state);
     tick_check_enemy_death(state);
-    tick_check_player_death(state);
     tick_spawner(state);
     tick_enemies(state);
+
+    if check_player_death(state) {
+        state.game_over = true;
+    }
 }
 
 fn tick_player(state: &mut GameState) {
@@ -215,9 +218,6 @@ fn tick_check_enemy_death(state: &mut GameState) {
     state.lemons.retain(|l|l.pos.distance_squared(kill_zone) > LEMON_KILL_DIST_SQ);
 }
 
-fn tick_check_player_death(state: &mut GameState) {
-}
-
 fn tick_spawner(state: &mut GameState) {
     if state.tick % 60 == 0 {
         let new_lemon = Lemon::new(rand_spawn_pos(state.player_pos));
@@ -229,6 +229,17 @@ fn tick_enemies(state: &mut GameState) {
     for l in &mut state.lemons {
         l.tick(state.player_pos);
     }
+}
+
+fn check_player_death(state: &GameState) -> bool {
+    const LEMON_KILL_DIST_SQ: f32 = PLAYER_RADIUS * PLAYER_RADIUS + LEMON_RADIUS * LEMON_RADIUS;
+    let kill_zone = state.player_pos;
+
+    for l in &state.lemons {
+        if l.pos.distance_squared(kill_zone) < LEMON_KILL_DIST_SQ { return true; }
+    }
+
+    false
 }
 
 // an enemy that starts as a lime, wanders for a bit, then begins to charge the player aggressively
@@ -321,6 +332,10 @@ fn render(state: &GameState) {
     );
     draw_text("Also you have food allergies", 20., 80., 20.0, WHITE);
     draw_text("Unless you're rolling. Of course", 20., 100., 20.0, WHITE);
+
+    if state.game_over {
+        draw_text("Dead", 600.0, 300.0, 60.0, WHITE);
+    }
 
     if DEBUG_VIEW {
         let player_col = match state.player_state() {
