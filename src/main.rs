@@ -310,6 +310,8 @@ fn tick_enemies(state: &mut GameState, ass: &Assets) {
 
 fn check_player_death(state: &GameState) -> bool {
     const LEMON_KILL_DIST_SQ: f32 = PLAYER_RADIUS * PLAYER_RADIUS + LEMON_RADIUS * LEMON_RADIUS;
+    const BULLET_KILL_DIST_SQ: f32 = PLAYER_RADIUS * PLAYER_RADIUS + BULLET_RADIUS * BULLET_RADIUS;
+
     let kill_zone = state.player_pos;
 
     for l in &state.lemons {
@@ -318,7 +320,11 @@ fn check_player_death(state: &GameState) -> bool {
         }
     }
 
-    // TODO: check bullet colision
+    for b in &state.bullets {
+        if b.pos.distance_squared(kill_zone) < BULLET_KILL_DIST_SQ {
+            return true;
+        }
+    }
 
     false
 }
