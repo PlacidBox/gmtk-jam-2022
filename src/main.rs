@@ -64,7 +64,7 @@ async fn main() {
         ass.bgm,
         PlaySoundParams {
             looped: true,
-            volume: 0.5,
+            volume: 0.125,
         },
     );
 
@@ -106,14 +106,14 @@ struct GameState {
     game_over: bool,
     tick: i32,
 
-    player_pos: (f32, f32),
-    player_dir: (f32, f32),
+    player_pos: Vec2,
+    player_dir: Vec2,
     // which tick the player ceases rolling, and starts recovering from the roll
     player_rolling_until: i32,
 
     // knife keeps its own dir, so that it doesn't get set back to 0,0 when hte player stops moving
-    knife_pos: (f32, f32),
-    knife_dir: (f32, f32),
+    knife_pos: Vec2,
+    knife_dir: Vec2,
 
     lemons: Vec<Lemon>,
 }
@@ -134,17 +134,17 @@ impl GameState {
 
 impl Default for GameState {
     fn default() -> Self {
-        let world_centre = (WORLD_WIDTH / 2.0, WORLD_HEIGHT / 2.0);
+        let world_centre = vec2(WORLD_WIDTH / 2.0, WORLD_HEIGHT / 2.0);
         Self {
             game_over: false,
             tick: 0,
             player_pos: world_centre,
-            player_dir: (0.0, 0.0),
+            player_dir: vec2(0.0, 0.0),
             // dirty hack to start the player not in recovery mode
             player_rolling_until: -PLAYER_ROLL_RECOVERY_TICKS,
 
             knife_pos: world_centre,
-            knife_dir: (1.0, 0.0),
+            knife_dir: vec2(1.0, 0.0),
 
             lemons: vec![],
         }
@@ -164,9 +164,8 @@ fn tick(state: &mut GameState) {
 
     // check for player death
 
-    // spawn enemies
-
-    // update enemies
+    tick_spawner(state);
+    tick_enemies(state);
 }
 
 fn tick_player(state: &mut GameState) {
@@ -177,15 +176,15 @@ fn tick_player(state: &mut GameState) {
         let right = is_key_down(KeyCode::D) || is_key_down(KeyCode::Right);
 
         state.player_dir = match (up, left, down, right) {
-            (true, true, false, false) => (-DIAG_SPEED, -DIAG_SPEED), // UL
-            (false, true, true, false) => (-DIAG_SPEED, DIAG_SPEED),  // DL
-            (false, false, true, true) => (DIAG_SPEED, DIAG_SPEED),   // DR
-            (true, false, false, true) => (DIAG_SPEED, -DIAG_SPEED),  // UR
-            (true, _, false, _) => (0.0, -1.0),                       // U
-            (_, true, _, false) => (-1.0, 0.0),                       // L
-            (false, _, true, _) => (0.0, 1.0),                        // D
-            (_, false, _, true) => (1.0, 0.0),                        // R
-            _ => (0.0, 0.0),
+            (true, true, false, false) => vec2(-DIAG_SPEED, -DIAG_SPEED), // UL
+            (false, true, true, false) => vec2(-DIAG_SPEED, DIAG_SPEED),  // DL
+            (false, false, true, true) => vec2(DIAG_SPEED, DIAG_SPEED),   // DR
+            (true, false, false, true) => vec2(DIAG_SPEED, -DIAG_SPEED),  // UR
+            (true, _, false, _) => vec2(0.0, -1.0),                       // U
+            (_, true, _, false) => vec2(-1.0, 0.0),                       // L
+            (false, _, true, _) => vec2(0.0, 1.0),                        // D
+            (_, false, _, true) => vec2(1.0, 0.0),                        // R
+            _ => vec2(0.0, 0.0),
         };
 
         let start_roll =
@@ -200,17 +199,27 @@ fn tick_player(state: &mut GameState) {
         PlayerState::Roll => PLAYER_ROLL_SPEED,
         PlayerState::Recover => 0.0,
     };
-    state.player_pos.0 += state.player_dir.0 * speed_mul;
-    state.player_pos.1 += state.player_dir.1 * speed_mul;
+    state.player_pos += state.player_dir * speed_mul;
+
     ensure_in_bounds(&mut state.player_pos);
 }
 
 fn tick_knife(state: &mut GameState) {
-    if state.player_dir != (0.0, 0.0) {
+    if state.player_dir != vec2(0.0, 0.0) {
         state.knife_dir = state.player_dir
     };
-    state.knife_pos.0 = state.player_pos.0 + state.knife_dir.0 * KINFE_REACH;
-    state.knife_pos.1 = state.player_pos.1 + state.knife_dir.1 * KINFE_REACH;
+    state.knife_pos = state.player_pos + state.knife_dir * KINFE_REACH;
+}
+
+fn tick_spawner(state: &mut GameState) {
+    let new_lemon = Lemon::new(rand_spawn_pos(state.player_pos));
+    state.lemons.push(new_lemon);
+}
+
+fn tick_enemies(state: &mut GameState) {
+    for l in &mut state.lemons {
+        l.tick(state.player_pos);
+    }
 }
 
 // an enemy that starts as a lime, wanders for a bit, then begins to charge the player aggressively
@@ -218,15 +227,16 @@ fn tick_knife(state: &mut GameState) {
 const LEMON_SPEED_WANDER: f32 = 4.0;
 const LEMON_SPEED_ATTACK: f32 = 10.0;
 const LEMON_ATTACKS_AFTER: i32 = 300;
+const LEMON_RADIUS: f32 = 15.0;
 struct Lemon {
     dead: bool,
-    pos: (f32, f32),
-    target: (f32, f32),
+    pos: Vec2,
+    target: Vec2,
     attacks_in: i32,
 }
 
 impl Lemon {
-    fn new(spawn_point: (f32, f32)) -> Lemon {
+    fn new(spawn_point: Vec2) -> Lemon {
         Lemon {
             dead: false,
             pos: spawn_point,
@@ -235,7 +245,7 @@ impl Lemon {
         }
     }
 
-    fn tick(&mut self, player_pos: (f32, f32)) {
+    fn tick(&mut self, player_pos: Vec2) {
         if self.attacks_in == 0 {
             self.target = player_pos;
         }
@@ -244,9 +254,25 @@ impl Lemon {
     }
 }
 
-fn ensure_in_bounds(pos: &mut (f32, f32)) {
-    pos.0 = pos.0.clamp(0.0, WORLD_WIDTH);
-    pos.1 = pos.1.clamp(0.0, WORLD_HEIGHT);
+fn ensure_in_bounds(pos: &mut Vec2) {
+    pos.x = pos.x.clamp(0.0, WORLD_WIDTH);
+    pos.y = pos.y.clamp(0.0, WORLD_HEIGHT);
+}
+
+fn rand_spawn_pos(player_pos: Vec2) -> Vec2 {
+    const TOO_CLOSE: f32 = 250.0;
+    const TOO_CLOSE_SQ: f32 = TOO_CLOSE * TOO_CLOSE;
+
+    loop {
+        let v = vec2(
+            rand::gen_range(0.0, WORLD_WIDTH),
+            rand::gen_range(0.0, WORLD_HEIGHT),
+        );
+
+        if v.distance_squared(player_pos) > TOO_CLOSE_SQ {
+            return v;
+        }
+    }
 }
 
 fn render(state: &GameState) {
@@ -280,19 +306,23 @@ fn render(state: &GameState) {
         };
 
         draw_circle_lines(
-            state.player_pos.0,
-            state.player_pos.1,
+            state.player_pos.x,
+            state.player_pos.y,
             PLAYER_RADIUS,
             1.0,
             player_col,
         );
 
         draw_circle_lines(
-            state.knife_pos.0,
-            state.knife_pos.1,
+            state.knife_pos.x,
+            state.knife_pos.y,
             KNIFE_RADIUS,
             1.0,
             GREEN,
         );
+
+        for l in &state.lemons {
+            draw_circle(l.pos.x, l.pos.y, LEMON_RADIUS, YELLOW);
+        }
     }
 }
