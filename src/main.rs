@@ -17,7 +17,7 @@ const PLAYER_RADIUS: f32 = 20.0;
 const PLAYER_WALK_SPEED: f32 = 2.0;
 const PLAYER_ROLL_SPEED: f32 = 6.0;
 const PLAYER_ROLL_TICKS: i32 = 30;
-const PLAYER_ROLL_RECOVERY_TICKS: i32 = 5;
+const PLAYER_ROLL_RECOVERY_TICKS: i32 = 20;
 
 // Knife hitbox, and how far away from the player it is.
 const KNIFE_RADIUS: f32 = 20.0;
@@ -99,10 +99,10 @@ struct GameState {
     tick: i32,
     player_pos: (f32, f32),
     player_dir: (f32, f32),
-    // which tick the player ceases rolling
+    // which tick the player ceases rolling, and starts recovering from the roll
     player_rolling_until: i32,
 
-    // kinfe keeps its own dir, so that it doesn't get set back to 0,0 when hte player stops moving
+    // knife keeps its own dir, so that it doesn't get set back to 0,0 when hte player stops moving
     knife_pos: (f32, f32),
     knife_dir: (f32, f32),
 }
@@ -111,6 +111,8 @@ impl GameState {
     fn player_state(&self) -> PlayerState {
         if self.player_rolling_until > self.tick {
             PlayerState::Roll
+        } else if self.player_rolling_until + PLAYER_ROLL_RECOVERY_TICKS > self.tick {
+            PlayerState::Recover
         } else {
             PlayerState::Walk
         }
@@ -126,7 +128,6 @@ impl Default for GameState {
             player_dir: (0.0, 0.0),
             player_rolling_until: 0,
 
-            // kinfe
             knife_pos: world_centre,
             knife_dir: (1.0, 0.0),
         }
@@ -136,12 +137,12 @@ impl Default for GameState {
 fn tick(state: &mut GameState) {
     state.tick += 1;
 
-    if state.player_state() == PlayerState::Walk {
+    // update player
+    if state.player_state() == PlayerState::Walk || state.player_state() == PlayerState::Recover {
         let up = is_key_down(KeyCode::W) || is_key_down(KeyCode::Up);
         let left = is_key_down(KeyCode::A) || is_key_down(KeyCode::Left);
         let down = is_key_down(KeyCode::S) || is_key_down(KeyCode::Down);
         let right = is_key_down(KeyCode::D) || is_key_down(KeyCode::Right);
-        let start_roll = is_key_down(KeyCode::Space);
 
         state.player_dir = match (up, left, down, right) {
             (true, true, false, false) => (-DIAG_SPEED, -DIAG_SPEED), // UL
@@ -155,6 +156,8 @@ fn tick(state: &mut GameState) {
             _ => (0.0, 0.0),
         };
 
+        let start_roll =
+            is_key_down(KeyCode::Space) && state.player_state() != PlayerState::Recover;
         if start_roll {
             state.player_rolling_until = state.tick + PLAYER_ROLL_TICKS;
         }
@@ -171,12 +174,20 @@ fn tick(state: &mut GameState) {
     state.player_pos.1 += state.player_dir.1 * speed_mul;
     ensure_in_bounds(&mut state.player_pos);
 
-    if state.player_dir != (0.0, 0.0) { state.knife_dir = state.player_dir };
+    // update knife hitbox
+    if state.player_dir != (0.0, 0.0) {
+        state.knife_dir = state.player_dir
+    };
     state.knife_pos.0 = state.player_pos.0 + state.knife_dir.0 * KINFE_REACH;
     state.knife_pos.1 = state.player_pos.1 + state.knife_dir.1 * KINFE_REACH;
 
+    // check for enemy death
 
-    // check for begin of roll animation. can't change dir while rolling?
+    // check for player death
+
+    // spawn enemies
+
+    // update enemies
 }
 
 fn ensure_in_bounds(pos: &mut (f32, f32)) {
