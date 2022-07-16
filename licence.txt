@@ -3,6 +3,7 @@ TODO: licencing for this? apache2?
 TODO: licencing data
 
 bread, cook, grapes, lemon: emojipedia twitter emotes (licence??)
+space background - Photo by Felix Mittermeier: https://www.pexels.com/photo/blue-and-purple-cosmic-sky-956999/
 radmusic.ogg: maddenedman
 
 code? macroquad: https://github.com/not-fl3/macroquad APACHE2

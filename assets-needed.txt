@@ -7,5 +7,7 @@ SFX
 - spawn enemy - Cartoon Pop 
 - enemy grape shoots out little grapes
 - player death
-- enemy death 
+- enemy death - splat 005
 
+Images
+- background - space image
