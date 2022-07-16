@@ -24,7 +24,7 @@ const PLAYER_ROLL_RECOVERY_TICKS: i32 = 20;
 
 // Knife hitbox, and how far away from the player it is.
 const KNIFE_RADIUS: f32 = 20.0;
-const KINFE_REACH: f32 = 30.0;
+const KNIFE_REACH: f32 = 30.0;
 
 const TICKS_BETWEEN_WAVES_MAX: i32 = TICKS_PER_SEC * 3;
 const TICKS_BETWEEN_WAVES_MIN: i32 = TICKS_PER_SEC * 5;
@@ -225,7 +225,7 @@ fn tick_knife(state: &mut GameState) {
     if state.player_dir != vec2(0.0, 0.0) {
         state.knife_dir = state.player_dir
     };
-    state.knife_pos = state.player_pos + state.knife_dir * KINFE_REACH;
+    state.knife_pos = state.player_pos + state.knife_dir * KNIFE_REACH;
 }
 
 fn tick_check_enemy_death(state: &mut GameState, ass: &Assets) {
