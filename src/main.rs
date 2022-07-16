@@ -22,7 +22,7 @@ const PLAYER_ROLL_RECOVERY_TICKS: i32 = 20;
 
 // Knife hitbox, and how far away from the player it is.
 const KNIFE_RADIUS: f32 = 20.0;
-const KINFE_REACH: f32 = 20.0;
+const KINFE_REACH: f32 = 30.0;
 
 const DEBUG_VIEW: bool = true;
 
@@ -209,6 +209,10 @@ fn tick_knife(state: &mut GameState) {
 }
 
 fn tick_check_enemy_death(state: &mut GameState) {
+    const LEMON_KILL_DIST_SQ: f32 = KNIFE_RADIUS * KNIFE_RADIUS + LEMON_RADIUS * LEMON_RADIUS;
+
+    let kill_zone = state.knife_pos;
+    state.lemons.retain(|l|l.pos.distance_squared(kill_zone) > LEMON_KILL_DIST_SQ);
 }
 
 fn tick_check_player_death(state: &mut GameState) {
@@ -236,7 +240,6 @@ const LEMON_SPEED_ATTACK: f32 = 2.5;
 const LEMON_ATTACKS_AFTER: i32 = TICKS_PER_SEC * 10;
 const LEMON_RADIUS: f32 = 10.0;
 struct Lemon {
-    dead: bool,
     pos: Vec2,
     wander_to: Vec2,
     attacks_in: i32,
@@ -245,7 +248,6 @@ struct Lemon {
 impl Lemon {
     fn new(spawn_point: Vec2) -> Lemon {
         Lemon {
-            dead: false,
             pos: spawn_point,
             wander_to: spawn_point,
             attacks_in: LEMON_ATTACKS_AFTER,
