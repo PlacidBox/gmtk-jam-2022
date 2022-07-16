@@ -107,6 +107,8 @@ struct GameState {
     // knife keeps its own dir, so that it doesn't get set back to 0,0 when hte player stops moving
     knife_pos: (f32, f32),
     knife_dir: (f32, f32),
+
+    lemons: Vec<Lemon>,
 }
 
 impl GameState {
@@ -136,6 +138,8 @@ impl Default for GameState {
 
             knife_pos: world_centre,
             knife_dir: (1.0, 0.0),
+
+            lemons: vec![],
         }
     }
 }
@@ -200,6 +204,37 @@ fn tick_knife(state: &mut GameState) {
     };
     state.knife_pos.0 = state.player_pos.0 + state.knife_dir.0 * KINFE_REACH;
     state.knife_pos.1 = state.player_pos.1 + state.knife_dir.1 * KINFE_REACH;
+}
+
+// an enemy that starts as a lime, wanders for a bit, then begins to charge the player aggressively
+// after turning in to a lemon
+const LEMON_SPEED_WANDER: f32 = 4.0;
+const LEMON_SPEED_ATTACK: f32 = 10.0;
+const LEMON_ATTACKS_AFTER: i32 = 300;
+struct Lemon {
+    dead: bool,
+    pos: (f32, f32),
+    target: (f32, f32),
+    attacks_in: i32,
+}
+
+impl Lemon {
+    fn new(spawn_point: (f32, f32)) -> Lemon {
+        Lemon {
+            dead: false,
+            pos: spawn_point,
+            target: spawn_point,
+            attacks_in: LEMON_ATTACKS_AFTER,
+        }
+    }
+
+    fn tick(&mut self, player_pos: (f32, f32)) {
+        if self.attacks_in == 0 {
+            self.target = player_pos;
+        }
+
+        ensure_in_bounds(&mut self.pos);
+    }
 }
 
 fn ensure_in_bounds(pos: &mut (f32, f32)) {
