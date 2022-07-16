@@ -4,15 +4,12 @@ mod waves;
 
 // TODO
 // - at least 2 new enemies (grapes, bread stick)
-//      - grapes shoot projectiles. projectiles shoud be _super_ clear, and aren't killable. should
-//          not shoot while the player is close
 //      - bread sticks charge and make a sound, then run at you really quick without changing
 //          direction.
 // - better background
 // - texture everything
 // - animate the roll
 // - better knife hitbox for the chef, so it's easir to kill things on a diagonals
-// - limits on enemy counts (should be fairly high though)
 
 use assets::Assets;
 
@@ -489,14 +486,25 @@ fn render(state: &GameState, ass: &Assets) {
         draw_text(&score_text, 400.0, 330.0, 30.0, WHITE);
     }
 
-    if DEBUG_VIEW {
-        let player_col = match state.player_state() {
-            PlayerState::Walk => RED,
-            PlayerState::Roll => GOLD,
-            PlayerState::Recover => ORANGE,
-            PlayerState::Dead => MAROON,
-        };
+    let player_params = DrawTextureParams {
+        dest_size: Some(vec2(PLAYER_RADIUS, PLAYER_RADIUS) * 2.0),
+        ..Default::default()
+    };
+    let player_col = match state.player_state() {
+        PlayerState::Walk => WHITE,
+        PlayerState::Roll => WHITE,
+        PlayerState::Recover => GOLD,
+        PlayerState::Dead => MAROON,
+    };
+    draw_texture_ex(
+        ass.player,
+        state.player_pos.x - PLAYER_RADIUS,
+        state.player_pos.y - PLAYER_RADIUS,
+        player_col,
+        player_params,
+    );
 
+    if DEBUG_VIEW {
         draw_circle_lines(
             state.player_pos.x,
             state.player_pos.y,
@@ -514,48 +522,45 @@ fn render(state: &GameState, ass: &Assets) {
         );
     }
 
+    let lem_params = DrawTextureParams {
+        dest_size: Some(vec2(LEMON_RADIUS, LEMON_RADIUS) * 2.0),
+        ..Default::default()
+    };
     for l in &state.lemons {
-        let lem_params = DrawTextureParams {
-            dest_size: Some(vec2(LEMON_RADIUS, LEMON_RADIUS) * 2.0),
-            ..Default::default()
-        };
-
         draw_texture_ex(
             ass.lemon,
             l.pos.x - LEMON_RADIUS,
             l.pos.y - LEMON_RADIUS,
             WHITE,
-            lem_params,
+            lem_params.clone(),
         );
     }
 
+    let grape_params = DrawTextureParams {
+        dest_size: Some(vec2(GRAPE_RADIUS, GRAPE_RADIUS) * 2.0),
+        ..Default::default()
+    };
     for g in &state.grapes {
-        let lem_params = DrawTextureParams {
-            dest_size: Some(vec2(GRAPE_RADIUS, GRAPE_RADIUS) * 2.0),
-            ..Default::default()
-        };
-
         draw_texture_ex(
             ass.grape,
             g.pos.x - GRAPE_RADIUS,
             g.pos.y - GRAPE_RADIUS,
             WHITE,
-            lem_params,
+            grape_params.clone(),
         );
     }
 
+    let bull_params = DrawTextureParams {
+        dest_size: Some(vec2(BULLET_RADIUS, BULLET_RADIUS) * 2.0),
+        ..Default::default()
+    };
     for b in &state.bullets {
-        let lem_params = DrawTextureParams {
-            dest_size: Some(vec2(BULLET_RADIUS, BULLET_RADIUS) * 2.0),
-            ..Default::default()
-        };
-
         draw_texture_ex(
             ass.bullet,
             b.pos.x - BULLET_RADIUS,
             b.pos.y - BULLET_RADIUS,
             WHITE,
-            lem_params,
+            bull_params.clone(),
         );
     }
 }
