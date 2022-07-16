@@ -1,0 +1,11 @@
+Audio
+Music 
+- background music
+
+SFX
+- start roll
+- spawn enemy
+- enemy grape shoots out little grapes
+- player death
+- enemy death 
+
