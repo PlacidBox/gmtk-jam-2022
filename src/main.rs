@@ -243,23 +243,32 @@ fn tick_knife(state: &mut GameState) {
 
 fn tick_check_enemy_death(state: &mut GameState, ass: &Assets) {
     const LEMON_KILL_DIST_SQ: f32 = KNIFE_RADIUS * KNIFE_RADIUS + LEMON_RADIUS * LEMON_RADIUS;
+    const GRAPE_KILL_DIST_SQ: f32 = KNIFE_RADIUS * KNIFE_RADIUS + GRAPE_RADIUS * GRAPE_RADIUS;
 
     let kill_zone = state.knife_pos;
 
     let initial_lem_len = state.lemons.len();
+    let initial_grape_len = state.grapes.len();
 
     state
         .lemons
         .retain(|l| l.pos.distance_squared(kill_zone) > LEMON_KILL_DIST_SQ);
 
+    state
+        .grapes
+        .retain(|g| g.pos.distance_squared(kill_zone) > GRAPE_KILL_DIST_SQ);
+
+    // bullets aren't killed by knife, but when going out of bounds
+    state
+        .bullets
+        .retain(|b| b.pos >= vec2(0.0, 0.0) && b.pos <= vec2(WORLD_WIDTH, WORLD_HEIGHT));
+
     let any_lemons_died = state.lemons.len() != initial_lem_len;
-    if any_lemons_died {
+    let any_grapes_died = state.grapes.len() != initial_grape_len;
+
+    if any_lemons_died || any_grapes_died {
         play_sound_once(ass.enemy_death);
     }
-
-    // TODO: kill grapes
-
-    // TODO: cull out of bounds bullets
 }
 
 fn tick_spawner(state: &mut GameState) {
@@ -396,8 +405,8 @@ impl Grape {
         }
 
         let target_off = vec2(
-            gen_range(BULLET_RNG, BULLET_RNG),
-            gen_range(BULLET_RNG, BULLET_RNG),
+            gen_range(-BULLET_RNG, BULLET_RNG),
+            gen_range(-BULLET_RNG, BULLET_RNG),
         );
         let target_pos = player_pos + target_off;
         let bull_dir = (target_pos - self.pos).normalize();
