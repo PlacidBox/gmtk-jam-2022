@@ -6,9 +6,7 @@ mod waves;
 // - at least 2 new enemies (grapes, bread stick)
 //      - bread sticks charge and make a sound, then run at you really quick without changing
 //          direction.
-// - better background
 // - texture everything
-// - animate the roll
 // - better knife hitbox for the chef, so it's easir to kill things on a diagonals
 
 use assets::Assets;
