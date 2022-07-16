@@ -2,6 +2,18 @@
 mod assets;
 mod waves;
 
+// TODO
+// - at least 2 new enemies (grapes, bread stick)
+//      - grapes shoot projectiles. projectiles shoud be _super_ clear, and aren't killable. should
+//          not shoot while the player is close
+//      - bread sticks charge and make a sound, then run at you really quick without changing
+//          direction.
+// - better background
+// - texture everything
+// - animate the roll
+// - better knife hitbox for the chef, so it's easir to kill things on a diagonals
+// - limits on enemy counts (should be fairly high though)
+
 use assets::Assets;
 
 use macroquad::audio::{play_sound_once, PlaySoundParams};
@@ -157,7 +169,7 @@ fn tick(state: &mut GameState, ass: &Assets) {
     tick_spawner(state);
     tick_enemies(state);
 
-    if check_player_death(state) {
+    if state.player_state() != PlayerState::Roll && check_player_death(state) {
         state.game_over = true;
     }
 }
