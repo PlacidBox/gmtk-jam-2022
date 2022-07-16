@@ -1,4 +1,5 @@
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
+use macroquad::audio::PlaySoundParams;
 use macroquad::camera::Camera2D;
 use macroquad::prelude::*;
 
@@ -59,7 +60,13 @@ fn make_conf() -> Conf {
 #[macroquad::main(make_conf)]
 async fn main() {
     let ass = assets::load().await.unwrap();
-    macroquad::audio::play_sound_once(ass.example);
+    macroquad::audio::play_sound(
+        ass.bgm,
+        PlaySoundParams {
+            looped: true,
+            volume: 0.5,
+        },
+    );
 
     // store last time we ticked at, increment by 1/60th each time we tick up. if we're > 1 behind,
     // bound to max 1 second of catchup?
