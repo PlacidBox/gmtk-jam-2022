@@ -96,7 +96,9 @@ enum PlayerState {
 }
 
 struct GameState {
+    game_over: bool,
     tick: i32,
+
     player_pos: (f32, f32),
     player_dir: (f32, f32),
     // which tick the player ceases rolling, and starts recovering from the roll
@@ -109,7 +111,9 @@ struct GameState {
 
 impl GameState {
     fn player_state(&self) -> PlayerState {
-        if self.player_rolling_until > self.tick {
+        if self.game_over {
+            PlayerState::Dead
+        } else if self.player_rolling_until > self.tick {
             PlayerState::Roll
         } else if self.player_rolling_until + PLAYER_ROLL_RECOVERY_TICKS > self.tick {
             PlayerState::Recover
@@ -123,10 +127,12 @@ impl Default for GameState {
     fn default() -> Self {
         let world_centre = (WORLD_WIDTH / 2.0, WORLD_HEIGHT / 2.0);
         Self {
+            game_over: false,
             tick: 0,
             player_pos: world_centre,
             player_dir: (0.0, 0.0),
-            player_rolling_until: 0,
+            // dirty hack to start the player not in recovery mode
+            player_rolling_until: -PLAYER_ROLL_RECOVERY_TICKS,
 
             knife_pos: world_centre,
             knife_dir: (1.0, 0.0),
@@ -135,9 +141,24 @@ impl Default for GameState {
 }
 
 fn tick(state: &mut GameState) {
+    if state.game_over {
+        return;
+    }
     state.tick += 1;
 
-    // update player
+    tick_player(state);
+    tick_knife(state);
+
+    // check for enemy death
+
+    // check for player death
+
+    // spawn enemies
+
+    // update enemies
+}
+
+fn tick_player(state: &mut GameState) {
     if state.player_state() == PlayerState::Walk || state.player_state() == PlayerState::Recover {
         let up = is_key_down(KeyCode::W) || is_key_down(KeyCode::Up);
         let left = is_key_down(KeyCode::A) || is_key_down(KeyCode::Left);
@@ -162,32 +183,23 @@ fn tick(state: &mut GameState) {
             state.player_rolling_until = state.tick + PLAYER_ROLL_TICKS;
         }
     }
-
     let speed_mul = match state.player_state() {
         PlayerState::Dead => 0.0,
         PlayerState::Walk => PLAYER_WALK_SPEED,
         PlayerState::Roll => PLAYER_ROLL_SPEED,
         PlayerState::Recover => 0.0,
     };
-
     state.player_pos.0 += state.player_dir.0 * speed_mul;
     state.player_pos.1 += state.player_dir.1 * speed_mul;
     ensure_in_bounds(&mut state.player_pos);
+}
 
-    // update knife hitbox
+fn tick_knife(state: &mut GameState) {
     if state.player_dir != (0.0, 0.0) {
         state.knife_dir = state.player_dir
     };
     state.knife_pos.0 = state.player_pos.0 + state.knife_dir.0 * KINFE_REACH;
     state.knife_pos.1 = state.player_pos.1 + state.knife_dir.1 * KINFE_REACH;
-
-    // check for enemy death
-
-    // check for player death
-
-    // spawn enemies
-
-    // update enemies
 }
 
 fn ensure_in_bounds(pos: &mut (f32, f32)) {
@@ -218,12 +230,19 @@ fn render(state: &GameState) {
     draw_text("Unless you're rolling. Of course", 20., 100., 20.0, WHITE);
 
     if DEBUG_VIEW {
+        let player_col = match state.player_state() {
+            PlayerState::Walk => RED,
+            PlayerState::Roll => GOLD,
+            PlayerState::Recover => ORANGE,
+            PlayerState::Dead => MAROON,
+        };
+
         draw_circle_lines(
             state.player_pos.0,
             state.player_pos.1,
             PLAYER_RADIUS,
             1.0,
-            RED,
+            player_col,
         );
 
         draw_circle_lines(
