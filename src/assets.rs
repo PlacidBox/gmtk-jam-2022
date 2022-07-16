@@ -7,7 +7,7 @@ pub struct Assets {
     pub enemy_shoot: Sound,
     pub enemy_death: Sound,
 
-    pub backgroud: Texture2D,
+    pub background: Texture2D,
     pub player: Texture2D,
     pub lemon: Texture2D,
 }
@@ -23,7 +23,7 @@ pub async fn load() -> Result<Assets, FileError> {
         enemy_death: load_sound_from_bytes(include_bytes!("232135__yottasounds__splat-005.ogg"))
             .await?,
 
-        backgroud: Texture2D::from_file_with_format(include_bytes!("background.png"), None),
+        background: Texture2D::from_file_with_format(include_bytes!("background.png"), None),
         player: Texture2D::from_file_with_format(include_bytes!("cook.png"), None),
         lemon: Texture2D::from_file_with_format(include_bytes!("lemon.png"), None),
     })

@@ -331,7 +331,7 @@ fn rand_spawn_pos(avoid_pos: Vec2) -> Vec2 {
 }
 
 fn render(state: &GameState, ass: &Assets) {
-    draw_texture(ass.backgroud, 0.0, 0.0, WHITE);
+    draw_texture(ass.background, 0.0, 0.0, WHITE);
 
     let x = Camera2D::from_display_rect(Rect {
         x: 0.0,
