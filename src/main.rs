@@ -16,7 +16,7 @@ const MAX_TIME_BEHIND: f64 = 0.200;
 
 fn make_conf() -> Conf {
     Conf {
-        window_title: "diotona golfing".to_string(),
+        window_title: "dietona golfing".to_string(),
         window_width: 1280,
         window_height: 720,
         high_dpi: true,
