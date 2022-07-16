@@ -11,6 +11,13 @@ const MAX_TIME_BEHIND: f64 = 0.200;
 const WORLD_WIDTH: f32 = 1280.0;
 const WORLD_HEIGHT: f32 = 720.0;
 
+// don't run faster when moving diagonally.
+const DIAG_SPEED: f32 = 0.7071;
+const PLAYER_WALK_SPEED: f32 = 2.0;
+const PLAYER_ROLL_SPEED: f32 = 6.0;
+const PLAYER_ROLL_TICKS: i32 = 30;
+const PLAYER_ROLL_RECOVERY_TICKS: i32 = 5;
+
 fn make_conf() -> Conf {
     Conf {
         window_title: "roll and dice".to_string(),
@@ -76,6 +83,9 @@ async fn main() {
 struct GameState {
     tick: i32,
     player: (f32, f32),
+    player_dir: (f32, f32),
+    // which tick the player ceases rolling
+    player_rolling_until: i32,
 }
 
 impl Default for GameState {
@@ -83,6 +93,8 @@ impl Default for GameState {
         Self {
             tick: 0,
             player: (WORLD_WIDTH / 2.0, WORLD_HEIGHT / 2.0),
+            player_dir: (0.0, 0.0),
+            player_rolling_until: 0,
         }
     }
 }
@@ -90,40 +102,42 @@ impl Default for GameState {
 fn tick(state: &mut GameState) {
     state.tick += 1;
 
-    const DIAG_SPEED: f32 = 0.7071;
+    let player_rolling = state.player_rolling_until > state.tick;
 
-    const PLAYER_WALK_SPEED: f32 = 2.0;
-    const PLAYER_ROLL_SPEED: f32 = 6.0;
+    if !player_rolling {
+        let up = is_key_down(KeyCode::W) || is_key_down(KeyCode::Up);
+        let left = is_key_down(KeyCode::A) || is_key_down(KeyCode::Left);
+        let down = is_key_down(KeyCode::S) || is_key_down(KeyCode::Down);
+        let right = is_key_down(KeyCode::D) || is_key_down(KeyCode::Right);
+        let start_roll = is_key_down(KeyCode::Space);
 
-    const PLAYER_ROLL_RECOVERY_TICKS: i32 = 5;
+        state.player_dir = match (up, left, down, right) {
+            (true, true, false, false) => (-DIAG_SPEED, -DIAG_SPEED), // UL
+            (false, true, true, false) => (-DIAG_SPEED, DIAG_SPEED),  // DL
+            (false, false, true, true) => (DIAG_SPEED, DIAG_SPEED),   // DR
+            (true, false, false, true) => (DIAG_SPEED, -DIAG_SPEED),  // UR
+            (true, _, false, _) => (0.0, -1.0),                       // U
+            (_, true, _, false) => (-1.0, 0.0),                       // L
+            (false, _, true, _) => (0.0, 1.0),                        // D
+            (_, false, _, true) => (1.0, 0.0),                        // R
+            _ => (0.0, 0.0),
+        };
 
-    let up = is_key_down(KeyCode::W) || is_key_down(KeyCode::Up);
-    let left = is_key_down(KeyCode::A) || is_key_down(KeyCode::Left);
-    let down = is_key_down(KeyCode::S) || is_key_down(KeyCode::Down);
-    let right = is_key_down(KeyCode::D) || is_key_down(KeyCode::Right);
-    let roll = is_key_down(KeyCode::Space);
+        if start_roll {
+            state.player_rolling_until = state.tick + PLAYER_ROLL_TICKS;
+        }
+    }
 
-    let player_dir = match (up, left, down, right) {
-        (true, true, false, false) => (-DIAG_SPEED, -DIAG_SPEED), // UL
-        (false, true, true, false) => (-DIAG_SPEED, DIAG_SPEED), // DL
-        (false, false, true, true) => (DIAG_SPEED, DIAG_SPEED), // DR
-        (true, false, false, true) => (DIAG_SPEED, -DIAG_SPEED), // UR
-        (true, _, false, _) => (0.0, -1.0), // U
-        (_, true, _, false) => (-1.0, 0.0), // L
-        (false, _, true, _) => (0.0, 1.0),  // D
-        (_, false, _, true) => (1.0, 0.0),  // R
-        _ => (0.0, 0.0),
-    };
+    let player_rolling = state.player_rolling_until > state.tick;
 
-    let rolling = false;
-    let speed_mul = if rolling {
+    let speed_mul = if player_rolling {
         PLAYER_ROLL_SPEED
     } else {
         PLAYER_WALK_SPEED
     };
 
-    state.player.0 += player_dir.0 * speed_mul;
-    state.player.1 += player_dir.1 * speed_mul;
+    state.player.0 += state.player_dir.0 * speed_mul;
+    state.player.1 += state.player_dir.1 * speed_mul;
 
     // player dir, for holding out kinfe to kill enemies with. shouldn't ever be set to 0, stays
     // resting if not.
