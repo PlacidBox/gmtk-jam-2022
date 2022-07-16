@@ -1,14 +1,8 @@
 #![windows_subsystem = "windows"]
-
 use macroquad::camera::Camera2D;
 use macroquad::prelude::*;
 
 mod assets;
-
-// https://crates.io/crates/collider ?
-// https://rapier.rs/docs/ ?
-
-// https://opengameart.org/
 
 const TICKS_PER_SEC: f64 = 60.0;
 const TICK_RATE: f64 = 1.0 / TICKS_PER_SEC;
@@ -16,13 +10,27 @@ const MAX_TIME_BEHIND: f64 = 0.200;
 
 fn make_conf() -> Conf {
     Conf {
-        window_title: "dietona golfing".to_string(),
+        window_title: "roll and dice".to_string(),
         window_width: 1280,
         window_height: 720,
         high_dpi: true,
         ..Default::default()
     }
 }
+
+// circle game 3: roll and dice
+//  you're a little circle with a sword poking out. stab enemy to kill
+//  WASD to move. space to roll. invincible while rolling, but still kill enemies! needs a cooldown,
+//  but should be short.
+//
+//  do we control sword direction, or not? maybe only goes in the direction we're facing/moving
+//
+// otherwise kinda like geometry wars?
+// enemies:
+//  - soldier: boring guy who runs towards you. dies on impact
+//  - wizard: shoots 'lightning bolts', tries to move to the opposite side of the arena, slowly,
+//      or perhaps stays around where it spawns. brownian motion?
+//  - pikeman: charges to try and cut you off.
 
 #[macroquad::main(make_conf)]
 async fn main() {
