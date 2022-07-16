@@ -5,8 +5,8 @@ use macroquad::prelude::*;
 
 mod assets;
 
-const TICKS_PER_SEC: f64 = 60.0;
-const TICK_RATE: f64 = 1.0 / TICKS_PER_SEC;
+const TICKS_PER_SEC: i32 = 60;
+const TICK_RATE: f64 = 1.0 / TICKS_PER_SEC as f64;
 const MAX_TIME_BEHIND: f64 = 0.200;
 
 const WORLD_WIDTH: f32 = 1280.0;
@@ -212,8 +212,10 @@ fn tick_knife(state: &mut GameState) {
 }
 
 fn tick_spawner(state: &mut GameState) {
-    let new_lemon = Lemon::new(rand_spawn_pos(state.player_pos));
-    state.lemons.push(new_lemon);
+    if state.tick % 20 == 0 {
+        let new_lemon = Lemon::new(rand_spawn_pos(state.player_pos));
+        state.lemons.push(new_lemon);
+    }
 }
 
 fn tick_enemies(state: &mut GameState) {
@@ -226,12 +228,12 @@ fn tick_enemies(state: &mut GameState) {
 // after turning in to a lemon
 const LEMON_SPEED_WANDER: f32 = 4.0;
 const LEMON_SPEED_ATTACK: f32 = 10.0;
-const LEMON_ATTACKS_AFTER: i32 = 300;
+const LEMON_ATTACKS_AFTER: i32 = TICKS_PER_SEC * 10;
 const LEMON_RADIUS: f32 = 15.0;
 struct Lemon {
     dead: bool,
     pos: Vec2,
-    target: Vec2,
+    wander_to: Vec2,
     attacks_in: i32,
 }
 
@@ -240,17 +242,27 @@ impl Lemon {
         Lemon {
             dead: false,
             pos: spawn_point,
-            target: spawn_point,
+            wander_to: spawn_point,
             attacks_in: LEMON_ATTACKS_AFTER,
         }
     }
 
     fn tick(&mut self, player_pos: Vec2) {
-        if self.attacks_in == 0 {
-            self.target = player_pos;
+        if self.is_attacking() {
+            // move towards player at attack rate
+            let dir = (player_pos - self.pos).normalize_or_zero();
+            self.pos += dir * LEMON_SPEED_ATTACK;
+        } else {
+            self.attacks_in -= 1;
+            // if near wander point, pick another one somewhere else
+            // move towards wander point at slow rate.
         }
 
         ensure_in_bounds(&mut self.pos);
+    }
+
+    fn is_attacking(&self) -> bool {
+        self.attacks_in == 0
     }
 }
 
@@ -322,7 +334,8 @@ fn render(state: &GameState) {
         );
 
         for l in &state.lemons {
-            draw_circle(l.pos.x, l.pos.y, LEMON_RADIUS, YELLOW);
+            let col = if l.is_attacking() { YELLOW } else { GREEN };
+            draw_circle(l.pos.x, l.pos.y, LEMON_RADIUS, col);
         }
     }
 }
