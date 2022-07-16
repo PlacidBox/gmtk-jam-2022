@@ -90,26 +90,40 @@ impl Default for GameState {
 fn tick(state: &mut GameState) {
     state.tick += 1;
 
-    const PLAYER_SPEED: f32 = 3.0;
-    const DIAG_MUL: f32 = 0.7071;
+    const DIAG_SPEED: f32 = 0.7071;
 
-    // ,aoe
-    if is_key_down(KeyCode::W) {
-        state.player.1 -= PLAYER_SPEED;
-    }
+    const PLAYER_WALK_SPEED: f32 = 2.0;
+    const PLAYER_ROLL_SPEED: f32 = 6.0;
 
-    if is_key_down(KeyCode::A) {
-        state.player.0 -= PLAYER_SPEED;
-    }
+    const PLAYER_ROLL_RECOVERY_TICKS: i32 = 5;
 
-    if is_key_down(KeyCode::S) {
-        state.player.1 += PLAYER_SPEED;
-    }
+    let up = is_key_down(KeyCode::W) || is_key_down(KeyCode::Up);
+    let left = is_key_down(KeyCode::A) || is_key_down(KeyCode::Left);
+    let down = is_key_down(KeyCode::S) || is_key_down(KeyCode::Down);
+    let right = is_key_down(KeyCode::D) || is_key_down(KeyCode::Right);
+    let roll = is_key_down(KeyCode::Space);
 
-    if is_key_down(KeyCode::D) {
-        state.player.0 += PLAYER_SPEED;
+    let player_dir = match (up, left, down, right) {
+        (true, true, false, false) => (-DIAG_SPEED, -DIAG_SPEED), // UL
+        (false, true, true, false) => (-DIAG_SPEED, DIAG_SPEED), // DL
+        (false, false, true, true) => (DIAG_SPEED, DIAG_SPEED), // DR
+        (true, false, false, true) => (DIAG_SPEED, -DIAG_SPEED), // UR
+        (true, _, false, _) => (0.0, -1.0), // U
+        (_, true, _, false) => (-1.0, 0.0), // L
+        (false, _, true, _) => (0.0, 1.0),  // D
+        (_, false, _, true) => (1.0, 0.0),  // R
+        _ => (0.0, 0.0),
+    };
 
-    }
+    let rolling = false;
+    let speed_mul = if rolling {
+        PLAYER_ROLL_SPEED
+    } else {
+        PLAYER_WALK_SPEED
+    };
+
+    state.player.0 += player_dir.0 * speed_mul;
+    state.player.1 += player_dir.1 * speed_mul;
 
     // player dir, for holding out kinfe to kill enemies with. shouldn't ever be set to 0, stays
     // resting if not.
@@ -136,10 +150,22 @@ fn render(state: &GameState) {
     // draw_text("Hello, world!", 20.0, 20.0, 20.0, WHITE);
     draw_text(&format!("{0}", state.tick), 20., 20., 20.0, WHITE);
     draw_text("WASD to move. Space to roll", 20., 40., 20.0, WHITE);
-    draw_text("Dice up the evil food with your knife", 20., 60., 20.0, WHITE);
+    draw_text(
+        "Dice up the evil food with your knife",
+        20.,
+        60.,
+        20.0,
+        WHITE,
+    );
     draw_text("Also you have food allergies", 20., 80., 20.0, WHITE);
     draw_text("Unless you're rolling. Of course", 20., 100., 20.0, WHITE);
 
     draw_circle_lines(state.player.0, state.player.1, 20.0, 3.0, RED);
-    draw_circle_lines(state.player.0 + 12.0, state.player.1 + 12.0, 20.0, 3.0, GREEN);
+    draw_circle_lines(
+        state.player.0 + 12.0,
+        state.player.1 + 12.0,
+        20.0,
+        3.0,
+        GREEN,
+    );
 }
