@@ -6,8 +6,8 @@ mod waves;
 // - at least 2 new enemies (grapes, bread stick)
 //      - bread sticks charge and make a sound, then run at you really quick without changing
 //          direction.
-// - texture everything
 // - better knife hitbox for the chef, so it's easir to kill things on a diagonals
+// - tweak wave spawning to make the game 'fun'
 
 use assets::Assets;
 
@@ -32,13 +32,11 @@ const PLAYER_ROLL_TICKS: i32 = 30;
 const PLAYER_ROLL_RECOVERY_TICKS: i32 = 20;
 
 // Knife hitbox, and how far away from the player it is.
-const KNIFE_RADIUS: f32 = 20.0;
-const KNIFE_REACH: f32 = 30.0;
+const KNIFE_RADIUS: f32 = 25.0;
+const KNIFE_REACH: f32 = 35.0;
 
 const TICKS_BETWEEN_WAVES_MAX: i32 = TICKS_PER_SEC * 3;
 const TICKS_BETWEEN_WAVES_MIN: i32 = TICKS_PER_SEC * 5;
-
-const DEBUG_VIEW: bool = true;
 
 fn make_conf() -> Conf {
     Conf {
@@ -478,12 +476,6 @@ fn render(state: &GameState, ass: &Assets) {
     draw_text("Also you have food allergies", 20., 80., 20.0, WHITE);
     draw_text("Unless you're rolling. Of course", 20., 100., 20.0, WHITE);
 
-    if state.game_over {
-        let score_text = format!("You lasted {0} seconds", state.tick / TICKS_PER_SEC);
-        draw_text("Game over. Press R to restart", 300.0, 300.0, 30.0, WHITE);
-        draw_text(&score_text, 400.0, 330.0, 30.0, WHITE);
-    }
-
     let player_params = DrawTextureParams {
         dest_size: Some(vec2(PLAYER_RADIUS, PLAYER_RADIUS) * 2.0),
         ..Default::default()
@@ -502,23 +494,17 @@ fn render(state: &GameState, ass: &Assets) {
         player_params,
     );
 
-    if DEBUG_VIEW {
-        draw_circle_lines(
-            state.player_pos.x,
-            state.player_pos.y,
-            PLAYER_RADIUS,
-            1.0,
-            player_col,
-        );
-
-        draw_circle_lines(
-            state.knife_pos.x,
-            state.knife_pos.y,
-            KNIFE_RADIUS,
-            1.0,
-            GREEN,
-        );
-    }
+    let knife_params = DrawTextureParams {
+        dest_size: Some(vec2(KNIFE_RADIUS, KNIFE_RADIUS) * 2.0),
+        ..Default::default()
+    };
+    draw_texture_ex(
+        ass.player_weapon,
+        state.knife_pos.x - KNIFE_RADIUS,
+        state.knife_pos.y - KNIFE_RADIUS,
+        WHITE,
+        knife_params,
+    );
 
     let lem_params = DrawTextureParams {
         dest_size: Some(vec2(LEMON_RADIUS, LEMON_RADIUS) * 2.0),
@@ -560,5 +546,11 @@ fn render(state: &GameState, ass: &Assets) {
             WHITE,
             bull_params.clone(),
         );
+    }
+
+    if state.game_over {
+        let score_text = format!("You lasted {0} seconds", state.tick / TICKS_PER_SEC);
+        draw_text("Game over. Press R to restart", 300.0, 300.0, 30.0, WHITE);
+        draw_text(&score_text, 400.0, 330.0, 30.0, WHITE);
     }
 }
