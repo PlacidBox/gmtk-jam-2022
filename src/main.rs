@@ -18,6 +18,8 @@ const PLAYER_ROLL_SPEED: f32 = 6.0;
 const PLAYER_ROLL_TICKS: i32 = 30;
 const PLAYER_ROLL_RECOVERY_TICKS: i32 = 5;
 
+const DEBUG_VIEW: bool = true;
+
 fn make_conf() -> Conf {
     Conf {
         window_title: "roll and dice".to_string(),
@@ -82,19 +84,40 @@ async fn main() {
 
 struct GameState {
     tick: i32,
-    player: (f32, f32),
+    player_pos: (f32, f32),
     player_dir: (f32, f32),
     // which tick the player ceases rolling
     player_rolling_until: i32,
+    knife_pos: (f32, f32),
+}
+
+#[derive(PartialEq, Eq)]
+enum PlayerState {
+    Walk,
+    Roll,
+    Recover,
+    Dead,
+}
+
+impl GameState {
+    fn player_state(&self) -> PlayerState {
+        if self.player_rolling_until > self.tick {
+            PlayerState::Roll
+        } else {
+            PlayerState::Walk
+        }
+    }
 }
 
 impl Default for GameState {
     fn default() -> Self {
+        let world_centre = (WORLD_WIDTH / 2.0, WORLD_HEIGHT / 2.0);
         Self {
             tick: 0,
-            player: (WORLD_WIDTH / 2.0, WORLD_HEIGHT / 2.0),
+            player_pos: world_centre,
             player_dir: (0.0, 0.0),
             player_rolling_until: 0,
+            knife_pos: world_centre,
         }
     }
 }
@@ -102,9 +125,7 @@ impl Default for GameState {
 fn tick(state: &mut GameState) {
     state.tick += 1;
 
-    let player_rolling = state.player_rolling_until > state.tick;
-
-    if !player_rolling {
+    if state.player_state() == PlayerState::Walk {
         let up = is_key_down(KeyCode::W) || is_key_down(KeyCode::Up);
         let left = is_key_down(KeyCode::A) || is_key_down(KeyCode::Left);
         let down = is_key_down(KeyCode::S) || is_key_down(KeyCode::Down);
@@ -128,21 +149,26 @@ fn tick(state: &mut GameState) {
         }
     }
 
-    let player_rolling = state.player_rolling_until > state.tick;
-
-    let speed_mul = if player_rolling {
-        PLAYER_ROLL_SPEED
-    } else {
-        PLAYER_WALK_SPEED
+    let speed_mul = match state.player_state() {
+        PlayerState::Dead => 0.0,
+        PlayerState::Walk => PLAYER_WALK_SPEED,
+        PlayerState::Roll => PLAYER_ROLL_SPEED,
+        PlayerState::Recover => 0.0,
     };
 
-    state.player.0 += state.player_dir.0 * speed_mul;
-    state.player.1 += state.player_dir.1 * speed_mul;
+    state.player_pos.0 += state.player_dir.0 * speed_mul;
+    state.player_pos.1 += state.player_dir.1 * speed_mul;
+    ensure_in_bounds(&mut state.player_pos);
 
     // player dir, for holding out kinfe to kill enemies with. shouldn't ever be set to 0, stays
     // resting if not.
 
     // check for begin of roll animation. can't change dir while rolling?
+}
+
+fn ensure_in_bounds(pos: &mut (f32, f32)) {
+    pos.0 = pos.0.clamp(0.0, WORLD_WIDTH);
+    pos.1 = pos.1.clamp(0.0, WORLD_HEIGHT);
 }
 
 fn render(state: &GameState) {
@@ -152,17 +178,10 @@ fn render(state: &GameState) {
         w: WORLD_WIDTH,
         h: WORLD_HEIGHT,
     });
-    // so set viewport to some set ratio, just to make a simple 2 game a bit easier?
-    // this crops. an alternative is to let any aspect ratio, and not crop the sides, but
-    // that may be a bit more complicated. hmmm. depends on the game?
-    //
-    // this is measured from the bottom left of the screen, as x,y,width,height
-    // x.viewport = Some((0, 0, 800, 600));
-    // for now take up everything. we can do the borders later if needed.
+
+    // FUTURE: set viewport to maintain a constant aspect ratio, rather than stretching.
     macroquad::camera::set_camera(&x);
 
-    // draw_text("Hello, world!", 20.0, 20.0, 20.0, WHITE);
-    draw_text(&format!("{0}", state.tick), 20., 20., 20.0, WHITE);
     draw_text("WASD to move. Space to roll", 20., 40., 20.0, WHITE);
     draw_text(
         "Dice up the evil food with your knife",
@@ -174,12 +193,8 @@ fn render(state: &GameState) {
     draw_text("Also you have food allergies", 20., 80., 20.0, WHITE);
     draw_text("Unless you're rolling. Of course", 20., 100., 20.0, WHITE);
 
-    draw_circle_lines(state.player.0, state.player.1, 20.0, 3.0, RED);
-    draw_circle_lines(
-        state.player.0 + 12.0,
-        state.player.1 + 12.0,
-        20.0,
-        3.0,
-        GREEN,
-    );
+    if DEBUG_VIEW {
+        draw_circle_lines(state.player_pos.0, state.player_pos.1, 20.0, 1.0, RED);
+        draw_circle_lines(state.knife_pos.0, state.knife_pos.1, 20.0, 1.0, GREEN);
+    }
 }
