@@ -1,8 +1,9 @@
+#![windows_subsystem = "windows"]
 mod assets;
 mod waves;
 
 use assets::Assets;
-// #![windows_subsystem = "windows"]
+
 use macroquad::audio::{play_sound_once, PlaySoundParams};
 use macroquad::camera::Camera2D;
 use macroquad::prelude::*;
@@ -41,27 +42,6 @@ fn make_conf() -> Conf {
     }
 }
 
-// circle game 3: roll and dice
-//  you're a little circle with a sword poking out. stab enemy to kill
-//  WASD to move. space to roll. invincible while rolling, but still kill enemies! needs a cooldown,
-//  but should be short.
-//
-//  do we control sword direction, or not? maybe only goes in the direction we're facing/moving
-//
-// otherwise kinda like geometry wars?
-// enemies:
-//  - soldier: boring guy who runs towards you. dies on impact
-//  - wizard: shoots 'lightning bolts', tries to move to the opposite side of the arena, slowly,
-//      or perhaps stays around where it spawns. brownian motion?
-//  - pikeman: charges to try and cut you off.
-//
-// fruit theming?
-//  player -> chef
-//  soldier? -> pineapple
-//  wizard -> grape bunch. shoots grapes
-//  pikeman? some long pointy fruit? baugette?
-//      maybe use emojis?
-
 #[macroquad::main(make_conf)]
 async fn main() {
     let ass = assets::load().await.unwrap();
@@ -73,16 +53,14 @@ async fn main() {
         },
     );
 
-    // store last time we ticked at, increment by 1/60th each time we tick up. if we're > 1 behind,
-    // bound to max 1 second of catchup?
-    //
-    // max logic ticks _per_ render? 2?
-    // this is just to help smooth over stuttering
     let mut tick_time = get_time();
 
     let mut st = GameState::default();
 
     loop {
+        // Fixed tick rate game loop, with some support for smoothing out the frame rate if there's
+        // any hiccups. This is done by tracking how far 'behind' we are (clamped to a reasonable
+        // value), and doing multiple logic steps if needed to catch back up.
         let now = get_time();
         if now > tick_time + MAX_TIME_BEHIND {
             tick_time = now - MAX_TIME_BEHIND;
