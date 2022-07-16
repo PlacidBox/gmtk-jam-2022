@@ -212,7 +212,7 @@ fn tick_knife(state: &mut GameState) {
 }
 
 fn tick_spawner(state: &mut GameState) {
-    if state.tick % 20 == 0 {
+    if state.tick % 60 == 0 {
         let new_lemon = Lemon::new(rand_spawn_pos(state.player_pos));
         state.lemons.push(new_lemon);
     }
@@ -226,10 +226,12 @@ fn tick_enemies(state: &mut GameState) {
 
 // an enemy that starts as a lime, wanders for a bit, then begins to charge the player aggressively
 // after turning in to a lemon
-const LEMON_SPEED_WANDER: f32 = 4.0;
-const LEMON_SPEED_ATTACK: f32 = 10.0;
+const LEMON_SPEED_WANDER: f32 = 0.5;
+const LEMON_WANDER_CLOSE: f32 = 10.0;
+const LEMON_WANDER_SQ: f32 = LEMON_WANDER_CLOSE * LEMON_WANDER_CLOSE;
+const LEMON_SPEED_ATTACK: f32 = 2.5;
 const LEMON_ATTACKS_AFTER: i32 = TICKS_PER_SEC * 10;
-const LEMON_RADIUS: f32 = 15.0;
+const LEMON_RADIUS: f32 = 10.0;
 struct Lemon {
     dead: bool,
     pos: Vec2,
@@ -252,11 +254,17 @@ impl Lemon {
             // move towards player at attack rate
             let dir = (player_pos - self.pos).normalize_or_zero();
             self.pos += dir * LEMON_SPEED_ATTACK;
-        } else {
-            self.attacks_in -= 1;
-            // if near wander point, pick another one somewhere else
-            // move towards wander point at slow rate.
+            return;
         }
+
+        self.attacks_in -= 1;
+        if self.pos.distance_squared(self.wander_to) < LEMON_WANDER_SQ {
+            // try to avoid the player when wandering.
+            self.wander_to = rand_spawn_pos(player_pos);
+        }
+
+        let dir = (self.wander_to - self.pos).normalize();
+        self.pos += dir * LEMON_SPEED_WANDER;
 
         ensure_in_bounds(&mut self.pos);
     }
@@ -271,7 +279,7 @@ fn ensure_in_bounds(pos: &mut Vec2) {
     pos.y = pos.y.clamp(0.0, WORLD_HEIGHT);
 }
 
-fn rand_spawn_pos(player_pos: Vec2) -> Vec2 {
+fn rand_spawn_pos(avoid_pos: Vec2) -> Vec2 {
     const TOO_CLOSE: f32 = 250.0;
     const TOO_CLOSE_SQ: f32 = TOO_CLOSE * TOO_CLOSE;
 
@@ -281,7 +289,7 @@ fn rand_spawn_pos(player_pos: Vec2) -> Vec2 {
             rand::gen_range(0.0, WORLD_HEIGHT),
         );
 
-        if v.distance_squared(player_pos) > TOO_CLOSE_SQ {
+        if v.distance_squared(avoid_pos) > TOO_CLOSE_SQ {
             return v;
         }
     }
