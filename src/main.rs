@@ -1,5 +1,6 @@
+use assets::Assets;
 // #![windows_subsystem = "windows"]
-use macroquad::audio::PlaySoundParams;
+use macroquad::audio::{play_sound_once, PlaySoundParams};
 use macroquad::camera::Camera2D;
 use macroquad::prelude::*;
 
@@ -85,7 +86,7 @@ async fn main() {
 
         while tick_time < now {
             tick_time += TICK_RATE;
-            tick(&mut st);
+            tick(&mut st, &ass);
         }
 
         clear_background(BLACK);
@@ -105,6 +106,7 @@ enum PlayerState {
 struct GameState {
     game_over: bool,
     tick: i32,
+    score: i32,
 
     player_pos: Vec2,
     player_dir: Vec2,
@@ -138,6 +140,8 @@ impl Default for GameState {
         Self {
             game_over: false,
             tick: 0,
+            score: 0,
+
             player_pos: world_centre,
             player_dir: vec2(0.0, 0.0),
             // dirty hack to start the player not in recovery mode
@@ -151,7 +155,7 @@ impl Default for GameState {
     }
 }
 
-fn tick(state: &mut GameState) {
+fn tick(state: &mut GameState, ass: &Assets) {
     if state.game_over {
         return;
     }
@@ -159,7 +163,7 @@ fn tick(state: &mut GameState) {
 
     tick_player(state);
     tick_knife(state);
-    tick_check_enemy_death(state);
+    tick_check_enemy_death(state, ass);
     tick_spawner(state);
     tick_enemies(state);
 
@@ -211,11 +215,22 @@ fn tick_knife(state: &mut GameState) {
     state.knife_pos = state.player_pos + state.knife_dir * KINFE_REACH;
 }
 
-fn tick_check_enemy_death(state: &mut GameState) {
+fn tick_check_enemy_death(state: &mut GameState, ass: &Assets) {
     const LEMON_KILL_DIST_SQ: f32 = KNIFE_RADIUS * KNIFE_RADIUS + LEMON_RADIUS * LEMON_RADIUS;
 
     let kill_zone = state.knife_pos;
-    state.lemons.retain(|l|l.pos.distance_squared(kill_zone) > LEMON_KILL_DIST_SQ);
+
+    let initial_lem_len = state.lemons.len();
+
+    state
+        .lemons
+        .retain(|l| l.pos.distance_squared(kill_zone) > LEMON_KILL_DIST_SQ);
+
+        let any_lemons_died = state.lemons.len() != initial_lem_len;
+        if any_lemons_died {
+            play_sound_once(ass.enemy_death);
+        }
+
 }
 
 fn tick_spawner(state: &mut GameState) {
@@ -236,7 +251,9 @@ fn check_player_death(state: &GameState) -> bool {
     let kill_zone = state.player_pos;
 
     for l in &state.lemons {
-        if l.pos.distance_squared(kill_zone) < LEMON_KILL_DIST_SQ { return true; }
+        if l.pos.distance_squared(kill_zone) < LEMON_KILL_DIST_SQ {
+            return true;
+        }
     }
 
     false
