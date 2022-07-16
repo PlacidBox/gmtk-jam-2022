@@ -1,10 +1,11 @@
+mod assets;
+mod waves;
+
 use assets::Assets;
 // #![windows_subsystem = "windows"]
 use macroquad::audio::{play_sound_once, PlaySoundParams};
 use macroquad::camera::Camera2D;
 use macroquad::prelude::*;
-
-mod assets;
 
 const TICKS_PER_SEC: i32 = 60;
 const TICK_RATE: f64 = 1.0 / TICKS_PER_SEC as f64;
@@ -24,6 +25,8 @@ const PLAYER_ROLL_RECOVERY_TICKS: i32 = 20;
 // Knife hitbox, and how far away from the player it is.
 const KNIFE_RADIUS: f32 = 20.0;
 const KINFE_REACH: f32 = 30.0;
+
+const MAX_TICKS_BETWEEN_WAVES: i32 = 600;
 
 const DEBUG_VIEW: bool = true;
 
@@ -106,7 +109,9 @@ enum PlayerState {
 struct GameState {
     game_over: bool,
     tick: i32,
-    score: i32,
+
+    next_wave_num: i32,
+    next_wave_at_tick: i32,
 
     player_pos: Vec2,
     player_dir: Vec2,
@@ -132,6 +137,10 @@ impl GameState {
             PlayerState::Walk
         }
     }
+
+    fn no_enemies(&self) -> bool {
+        self.lemons.is_empty()
+    }
 }
 
 impl Default for GameState {
@@ -140,7 +149,9 @@ impl Default for GameState {
         Self {
             game_over: false,
             tick: 0,
-            score: 0,
+
+            next_wave_num: 0,
+            next_wave_at_tick: 0,
 
             player_pos: world_centre,
             player_dir: vec2(0.0, 0.0),
@@ -161,7 +172,7 @@ fn tick(state: &mut GameState, ass: &Assets) {
     }
     state.tick += 1;
 
-    tick_player(state);
+    tick_player(state, ass);
     tick_knife(state);
     tick_check_enemy_death(state, ass);
     tick_spawner(state);
@@ -172,7 +183,7 @@ fn tick(state: &mut GameState, ass: &Assets) {
     }
 }
 
-fn tick_player(state: &mut GameState) {
+fn tick_player(state: &mut GameState, ass: &Assets) {
     if state.player_state() == PlayerState::Walk || state.player_state() == PlayerState::Recover {
         let up = is_key_down(KeyCode::W) || is_key_down(KeyCode::Up);
         let left = is_key_down(KeyCode::A) || is_key_down(KeyCode::Left);
@@ -195,6 +206,7 @@ fn tick_player(state: &mut GameState) {
             is_key_down(KeyCode::Space) && state.player_state() != PlayerState::Recover;
         if start_roll {
             state.player_rolling_until = state.tick + PLAYER_ROLL_TICKS;
+            play_sound_once(ass.roll);
         }
     }
     let speed_mul = match state.player_state() {
@@ -226,15 +238,24 @@ fn tick_check_enemy_death(state: &mut GameState, ass: &Assets) {
         .lemons
         .retain(|l| l.pos.distance_squared(kill_zone) > LEMON_KILL_DIST_SQ);
 
-        let any_lemons_died = state.lemons.len() != initial_lem_len;
-        if any_lemons_died {
-            play_sound_once(ass.enemy_death);
-        }
-
+    let any_lemons_died = state.lemons.len() != initial_lem_len;
+    if any_lemons_died {
+        play_sound_once(ass.enemy_death);
+    }
 }
 
 fn tick_spawner(state: &mut GameState) {
-    if state.tick % 60 == 0 {
+    let spawn_wave = state.tick >= state.next_wave_at_tick || state.no_enemies();
+    if !spawn_wave {
+        return;
+    }
+
+    let new_wave = waves::next_wave(state.next_wave_num);
+    state.next_wave_num += 1;
+    state.next_wave_at_tick = state.tick + MAX_TICKS_BETWEEN_WAVES;
+
+    let num_lemons = rand::gen_range(new_wave.lemons.0, new_wave.lemons.1);
+    for _ in 0..num_lemons {
         let new_lemon = Lemon::new(rand_spawn_pos(state.player_pos));
         state.lemons.push(new_lemon);
     }
@@ -265,7 +286,8 @@ const LEMON_SPEED_WANDER: f32 = 0.5;
 const LEMON_WANDER_CLOSE: f32 = 10.0;
 const LEMON_WANDER_SQ: f32 = LEMON_WANDER_CLOSE * LEMON_WANDER_CLOSE;
 const LEMON_SPEED_ATTACK: f32 = 2.5;
-const LEMON_ATTACKS_AFTER: i32 = TICKS_PER_SEC * 10;
+const LEMON_ATTACKS_AFTER_MIN: i32 = TICKS_PER_SEC * 7;
+const LEMON_ATTACKS_AFTER_MAX: i32 = TICKS_PER_SEC * 20;
 const LEMON_RADIUS: f32 = 10.0;
 struct Lemon {
     pos: Vec2,
@@ -278,7 +300,7 @@ impl Lemon {
         Lemon {
             pos: spawn_point,
             wander_to: spawn_point,
-            attacks_in: LEMON_ATTACKS_AFTER,
+            attacks_in: rand::gen_range(LEMON_ATTACKS_AFTER_MIN, LEMON_ATTACKS_AFTER_MAX),
         }
     }
 
