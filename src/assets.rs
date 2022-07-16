@@ -10,6 +10,8 @@ pub struct Assets {
     pub background: Texture2D,
     pub player: Texture2D,
     pub lemon: Texture2D,
+    pub grape: Texture2D,
+    pub bullet: Texture2D,
 }
 
 pub async fn load() -> Result<Assets, FileError> {
@@ -26,5 +28,7 @@ pub async fn load() -> Result<Assets, FileError> {
         background: Texture2D::from_file_with_format(include_bytes!("background.png"), None),
         player: Texture2D::from_file_with_format(include_bytes!("cook.png"), None),
         lemon: Texture2D::from_file_with_format(include_bytes!("lemon.png"), None),
+        grape: Texture2D::from_file_with_format(include_bytes!("grape.png"), None),
+        bullet: Texture2D::from_file_with_format(include_bytes!("strawberry.png"), None),
     })
 }

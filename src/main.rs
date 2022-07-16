@@ -19,6 +19,7 @@ use assets::Assets;
 use macroquad::audio::{play_sound_once, PlaySoundParams};
 use macroquad::camera::Camera2D;
 use macroquad::prelude::*;
+use macroquad::rand::gen_range;
 
 const TICKS_PER_SEC: i32 = 60;
 const TICK_RATE: f64 = 1.0 / TICKS_PER_SEC as f64;
@@ -114,6 +115,8 @@ struct GameState {
     knife_dir: Vec2,
 
     lemons: Vec<Lemon>,
+    grapes: Vec<Grape>,
+    bullets: Vec<Bullet>,
 }
 
 impl GameState {
@@ -127,6 +130,24 @@ impl GameState {
         } else {
             PlayerState::Walk
         }
+    }
+
+    fn spawn_lemon(&mut self) {
+        if self.lemons.len() >= LEMONS_MAX {
+            return;
+        }
+
+        let new_lemon = Lemon::new(rand_spawn_pos(self.player_pos));
+        self.lemons.push(new_lemon);
+    }
+
+    fn spawn_grape(&mut self) {
+        if self.grapes.len() >= GRAPES_MAX {
+            return;
+        }
+
+        let new_grape = Grape::new(rand_spawn_pos(self.player_pos));
+        self.grapes.push(new_grape);
     }
 }
 
@@ -148,7 +169,9 @@ impl Default for GameState {
             knife_pos: world_centre,
             knife_dir: vec2(1.0, 0.0),
 
-            lemons: vec![],
+            lemons: Vec::with_capacity(LEMONS_MAX),
+            grapes: Vec::with_capacity(GRAPES_MAX),
+            bullets: Vec::new(),
         }
     }
 }
@@ -167,7 +190,7 @@ fn tick(state: &mut GameState, ass: &Assets) {
     tick_knife(state);
     tick_check_enemy_death(state, ass);
     tick_spawner(state);
-    tick_enemies(state);
+    tick_enemies(state, ass);
 
     if state.player_state() != PlayerState::Roll && check_player_death(state) {
         state.game_over = true;
@@ -233,6 +256,10 @@ fn tick_check_enemy_death(state: &mut GameState, ass: &Assets) {
     if any_lemons_died {
         play_sound_once(ass.enemy_death);
     }
+
+    // TODO: kill grapes
+
+    // TODO: cull out of bounds bullets
 }
 
 fn tick_spawner(state: &mut GameState) {
@@ -241,21 +268,34 @@ fn tick_spawner(state: &mut GameState) {
         return;
     }
 
-    let new_wave = waves::next_wave(state.next_wave_num);
+    let nw = waves::next_wave(state.next_wave_num);
     state.next_wave_num += 1;
     state.next_wave_at_tick =
-        state.tick + rand::gen_range(TICKS_BETWEEN_WAVES_MIN, TICKS_BETWEEN_WAVES_MAX);
+        state.tick + gen_range(TICKS_BETWEEN_WAVES_MIN, TICKS_BETWEEN_WAVES_MAX);
 
-    let num_lemons = rand::gen_range(new_wave.lemons.0, new_wave.lemons.1);
+    let num_lemons = gen_range(nw.lemons.0, nw.lemons.1);
+    let num_grapes = gen_range(nw.grapes.0, nw.grapes.1);
+
     for _ in 0..num_lemons {
-        let new_lemon = Lemon::new(rand_spawn_pos(state.player_pos));
-        state.lemons.push(new_lemon);
+        state.spawn_lemon();
+    }
+
+    for _ in 0..num_grapes {
+        state.spawn_grape();
     }
 }
 
-fn tick_enemies(state: &mut GameState) {
+fn tick_enemies(state: &mut GameState, ass: &Assets) {
     for l in &mut state.lemons {
         l.tick(state.player_pos);
+    }
+
+    for g in &mut state.grapes {
+        g.tick(ass, state.player_pos, &mut state.bullets);
+    }
+
+    for b in &mut state.bullets {
+        b.tick();
     }
 }
 
@@ -269,11 +309,14 @@ fn check_player_death(state: &GameState) -> bool {
         }
     }
 
+    // TODO: check bullet colision
+
     false
 }
 
 // an enemy that starts as a lime, wanders for a bit, then begins to charge the player aggressively
 // after turning in to a lemon
+const LEMONS_MAX: usize = 64;
 const LEMON_SPEED_WANDER: f32 = 0.5;
 const LEMON_WANDER_CLOSE: f32 = 10.0;
 const LEMON_WANDER_SQ: f32 = LEMON_WANDER_CLOSE * LEMON_WANDER_CLOSE;
@@ -292,7 +335,7 @@ impl Lemon {
         Lemon {
             pos: spawn_point,
             wander_to: spawn_point,
-            attacks_in: rand::gen_range(LEMON_ATTACKS_AFTER_MIN, LEMON_ATTACKS_AFTER_MAX),
+            attacks_in: gen_range(LEMON_ATTACKS_AFTER_MIN, LEMON_ATTACKS_AFTER_MAX),
         }
     }
 
@@ -312,12 +355,74 @@ impl Lemon {
 
         let dir = (self.wander_to - self.pos).normalize();
         self.pos += dir * LEMON_SPEED_WANDER;
-
-        ensure_in_bounds(&mut self.pos);
     }
 
     fn is_attacking(&self) -> bool {
         self.attacks_in == 0
+    }
+}
+
+const GRAPES_MAX: usize = 32;
+const GRAPE_ATTACKS_AFTER_MIN: i32 = 5 * TICKS_PER_SEC;
+const GRAPE_ATTACKS_AFTER_MAX: i32 = 15 * TICKS_PER_SEC;
+const GRAPE_RADIUS: f32 = 25.0;
+const GRAPE_NO_SHOOT_WITHIN: f32 = 100.0;
+const GRAPE_NO_SHOOT_WITHIN_SQ: f32 = GRAPE_NO_SHOOT_WITHIN * GRAPE_NO_SHOOT_WITHIN;
+struct Grape {
+    pos: Vec2,
+    attacks_in: i32,
+}
+
+impl Grape {
+    fn new(spawn_point: Vec2) -> Self {
+        Self {
+            pos: spawn_point,
+            attacks_in: gen_range(GRAPE_ATTACKS_AFTER_MIN, GRAPE_ATTACKS_AFTER_MAX),
+        }
+    }
+
+    fn tick(&mut self, ass: &Assets, player_pos: Vec2, bullets: &mut Vec<Bullet>) {
+        self.attacks_in -= 1;
+        if self.attacks_in > 0 {
+            return;
+        }
+
+        self.attacks_in = gen_range(GRAPE_ATTACKS_AFTER_MIN, GRAPE_ATTACKS_AFTER_MAX);
+
+        // if the player is fairly close to the grape, don't shoot. avoids 'instantly' killing the
+        // player.
+        if self.pos.distance_squared(player_pos) < GRAPE_NO_SHOOT_WITHIN_SQ {
+            return;
+        }
+
+        let target_off = vec2(
+            gen_range(BULLET_RNG, BULLET_RNG),
+            gen_range(BULLET_RNG, BULLET_RNG),
+        );
+        let target_pos = player_pos + target_off;
+        let bull_dir = (target_pos - self.pos).normalize();
+
+        bullets.push(Bullet {
+            pos: self.pos,
+            dir: bull_dir * BULLET_SPEED,
+        });
+
+        play_sound_once(ass.enemy_shoot);
+    }
+}
+
+// inaccuracy when shooting bullets from grapes
+const BULLET_RNG: f32 = 60.0;
+const BULLET_RADIUS: f32 = 13.0;
+const BULLET_SPEED: f32 = 5.0;
+struct Bullet {
+    pos: Vec2,
+    dir: Vec2,
+}
+
+impl Bullet {
+    fn tick(&mut self) {
+        self.pos += self.dir;
     }
 }
 
@@ -331,10 +436,7 @@ fn rand_spawn_pos(avoid_pos: Vec2) -> Vec2 {
     const TOO_CLOSE_SQ: f32 = TOO_CLOSE * TOO_CLOSE;
 
     loop {
-        let v = vec2(
-            rand::gen_range(0.0, WORLD_WIDTH),
-            rand::gen_range(0.0, WORLD_HEIGHT),
-        );
+        let v = vec2(gen_range(0.0, WORLD_WIDTH), gen_range(0.0, WORLD_HEIGHT));
 
         if v.distance_squared(avoid_pos) > TOO_CLOSE_SQ {
             return v;
@@ -407,6 +509,36 @@ fn render(state: &GameState, ass: &Assets) {
             ass.lemon,
             l.pos.x - LEMON_RADIUS,
             l.pos.y - LEMON_RADIUS,
+            WHITE,
+            lem_params,
+        );
+    }
+
+    for g in &state.grapes {
+        let lem_params = DrawTextureParams {
+            dest_size: Some(vec2(GRAPE_RADIUS, GRAPE_RADIUS) * 2.0),
+            ..Default::default()
+        };
+
+        draw_texture_ex(
+            ass.grape,
+            g.pos.x - GRAPE_RADIUS,
+            g.pos.y - GRAPE_RADIUS,
+            WHITE,
+            lem_params,
+        );
+    }
+
+    for b in &state.bullets {
+        let lem_params = DrawTextureParams {
+            dest_size: Some(vec2(BULLET_RADIUS, BULLET_RADIUS) * 2.0),
+            ..Default::default()
+        };
+
+        draw_texture_ex(
+            ass.bullet,
+            b.pos.x - BULLET_RADIUS,
+            b.pos.y - BULLET_RADIUS,
             WHITE,
             lem_params,
         );
