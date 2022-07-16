@@ -26,7 +26,8 @@ const PLAYER_ROLL_RECOVERY_TICKS: i32 = 20;
 const KNIFE_RADIUS: f32 = 20.0;
 const KINFE_REACH: f32 = 30.0;
 
-const MAX_TICKS_BETWEEN_WAVES: i32 = 600;
+const TICKS_BETWEEN_WAVES_MAX: i32 = TICKS_PER_SEC * 3;
+const TICKS_BETWEEN_WAVES_MIN: i32 = TICKS_PER_SEC * 5;
 
 const DEBUG_VIEW: bool = true;
 
@@ -137,10 +138,6 @@ impl GameState {
             PlayerState::Walk
         }
     }
-
-    fn no_enemies(&self) -> bool {
-        self.lemons.is_empty()
-    }
 }
 
 impl Default for GameState {
@@ -245,14 +242,14 @@ fn tick_check_enemy_death(state: &mut GameState, ass: &Assets) {
 }
 
 fn tick_spawner(state: &mut GameState) {
-    let spawn_wave = state.tick >= state.next_wave_at_tick || state.no_enemies();
+    let spawn_wave = state.tick >= state.next_wave_at_tick;
     if !spawn_wave {
         return;
     }
 
     let new_wave = waves::next_wave(state.next_wave_num);
     state.next_wave_num += 1;
-    state.next_wave_at_tick = state.tick + MAX_TICKS_BETWEEN_WAVES;
+    state.next_wave_at_tick = state.tick + rand::gen_range(TICKS_BETWEEN_WAVES_MIN, TICKS_BETWEEN_WAVES_MAX);
 
     let num_lemons = rand::gen_range(new_wave.lemons.0, new_wave.lemons.1);
     for _ in 0..num_lemons {
