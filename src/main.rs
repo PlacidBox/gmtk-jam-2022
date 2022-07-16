@@ -94,7 +94,7 @@ async fn main() {
         }
 
         clear_background(BLACK);
-        render(&st);
+        render(&st, &ass);
         next_frame().await
     }
 }
@@ -165,8 +165,12 @@ impl Default for GameState {
 
 fn tick(state: &mut GameState, ass: &Assets) {
     if state.game_over {
+        if is_key_down(KeyCode::R) {
+            *state = GameState::default();
+        }
         return;
     }
+
     state.tick += 1;
 
     tick_player(state, ass);
@@ -249,7 +253,8 @@ fn tick_spawner(state: &mut GameState) {
 
     let new_wave = waves::next_wave(state.next_wave_num);
     state.next_wave_num += 1;
-    state.next_wave_at_tick = state.tick + rand::gen_range(TICKS_BETWEEN_WAVES_MIN, TICKS_BETWEEN_WAVES_MAX);
+    state.next_wave_at_tick =
+        state.tick + rand::gen_range(TICKS_BETWEEN_WAVES_MIN, TICKS_BETWEEN_WAVES_MAX);
 
     let num_lemons = rand::gen_range(new_wave.lemons.0, new_wave.lemons.1);
     for _ in 0..num_lemons {
@@ -282,7 +287,7 @@ fn check_player_death(state: &GameState) -> bool {
 const LEMON_SPEED_WANDER: f32 = 0.5;
 const LEMON_WANDER_CLOSE: f32 = 10.0;
 const LEMON_WANDER_SQ: f32 = LEMON_WANDER_CLOSE * LEMON_WANDER_CLOSE;
-const LEMON_SPEED_ATTACK: f32 = 2.5;
+const LEMON_SPEED_ATTACK: f32 = 2.0;
 const LEMON_ATTACKS_AFTER_MIN: i32 = TICKS_PER_SEC * 3;
 const LEMON_ATTACKS_AFTER_MAX: i32 = TICKS_PER_SEC * 20;
 const LEMON_RADIUS: f32 = 10.0;
@@ -347,7 +352,9 @@ fn rand_spawn_pos(avoid_pos: Vec2) -> Vec2 {
     }
 }
 
-fn render(state: &GameState) {
+fn render(state: &GameState, ass: &Assets) {
+    draw_texture(ass.backgroud, 0.0, 0.0, WHITE);
+
     let x = Camera2D::from_display_rect(Rect {
         x: 0.0,
         y: 0.0,
@@ -370,7 +377,9 @@ fn render(state: &GameState) {
     draw_text("Unless you're rolling. Of course", 20., 100., 20.0, WHITE);
 
     if state.game_over {
-        draw_text("Dead", 600.0, 300.0, 60.0, WHITE);
+        let score_text = format!("You lasted {0} seconds", state.tick / TICKS_PER_SEC);
+        draw_text("Game over. Press R to restart", 300.0, 300.0, 30.0, WHITE);
+        draw_text(&score_text, 400.0, 330.0, 30.0, WHITE);
     }
 
     if DEBUG_VIEW {
@@ -396,10 +405,20 @@ fn render(state: &GameState) {
             1.0,
             GREEN,
         );
+    }
 
-        for l in &state.lemons {
-            let col = if l.is_attacking() { YELLOW } else { GREEN };
-            draw_circle(l.pos.x, l.pos.y, LEMON_RADIUS, col);
-        }
+    for l in &state.lemons {
+        let lem_params = DrawTextureParams {
+            dest_size: Some(vec2(LEMON_RADIUS, LEMON_RADIUS) * 2.0),
+            ..Default::default()
+        };
+
+        draw_texture_ex(
+            ass.lemon,
+            l.pos.x - LEMON_RADIUS,
+            l.pos.y - LEMON_RADIUS,
+            WHITE,
+            lem_params,
+        );
     }
 }
