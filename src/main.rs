@@ -13,10 +13,15 @@ const WORLD_HEIGHT: f32 = 720.0;
 
 // don't run faster when moving diagonally.
 const DIAG_SPEED: f32 = 0.7071;
+const PLAYER_RADIUS: f32 = 20.0;
 const PLAYER_WALK_SPEED: f32 = 2.0;
 const PLAYER_ROLL_SPEED: f32 = 6.0;
 const PLAYER_ROLL_TICKS: i32 = 30;
 const PLAYER_ROLL_RECOVERY_TICKS: i32 = 5;
+
+// Knife hitbox, and how far away from the player it is.
+const KNIFE_RADIUS: f32 = 20.0;
+const KINFE_REACH: f32 = 20.0;
 
 const DEBUG_VIEW: bool = true;
 
@@ -82,21 +87,24 @@ async fn main() {
     }
 }
 
-struct GameState {
-    tick: i32,
-    player_pos: (f32, f32),
-    player_dir: (f32, f32),
-    // which tick the player ceases rolling
-    player_rolling_until: i32,
-    knife_pos: (f32, f32),
-}
-
 #[derive(PartialEq, Eq)]
 enum PlayerState {
     Walk,
     Roll,
     Recover,
     Dead,
+}
+
+struct GameState {
+    tick: i32,
+    player_pos: (f32, f32),
+    player_dir: (f32, f32),
+    // which tick the player ceases rolling
+    player_rolling_until: i32,
+
+    // kinfe keeps its own dir, so that it doesn't get set back to 0,0 when hte player stops moving
+    knife_pos: (f32, f32),
+    knife_dir: (f32, f32),
 }
 
 impl GameState {
@@ -117,7 +125,10 @@ impl Default for GameState {
             player_pos: world_centre,
             player_dir: (0.0, 0.0),
             player_rolling_until: 0,
+
+            // kinfe
             knife_pos: world_centre,
+            knife_dir: (1.0, 0.0),
         }
     }
 }
@@ -160,8 +171,10 @@ fn tick(state: &mut GameState) {
     state.player_pos.1 += state.player_dir.1 * speed_mul;
     ensure_in_bounds(&mut state.player_pos);
 
-    // player dir, for holding out kinfe to kill enemies with. shouldn't ever be set to 0, stays
-    // resting if not.
+    if state.player_dir != (0.0, 0.0) { state.knife_dir = state.player_dir };
+    state.knife_pos.0 = state.player_pos.0 + state.knife_dir.0 * KINFE_REACH;
+    state.knife_pos.1 = state.player_pos.1 + state.knife_dir.1 * KINFE_REACH;
+
 
     // check for begin of roll animation. can't change dir while rolling?
 }
@@ -194,7 +207,20 @@ fn render(state: &GameState) {
     draw_text("Unless you're rolling. Of course", 20., 100., 20.0, WHITE);
 
     if DEBUG_VIEW {
-        draw_circle_lines(state.player_pos.0, state.player_pos.1, 20.0, 1.0, RED);
-        draw_circle_lines(state.knife_pos.0, state.knife_pos.1, 20.0, 1.0, GREEN);
+        draw_circle_lines(
+            state.player_pos.0,
+            state.player_pos.1,
+            PLAYER_RADIUS,
+            1.0,
+            RED,
+        );
+
+        draw_circle_lines(
+            state.knife_pos.0,
+            state.knife_pos.1,
+            KNIFE_RADIUS,
+            1.0,
+            GREEN,
+        );
     }
 }
