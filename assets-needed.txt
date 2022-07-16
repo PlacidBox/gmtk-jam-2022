@@ -3,8 +3,8 @@ Music
 - background music
 
 SFX
-- start roll
-- spawn enemy
+- start roll - whoosh
+- spawn enemy - Cartoon Pop 
 - enemy grape shoots out little grapes
 - player death
 - enemy death 

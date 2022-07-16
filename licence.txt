@@ -3,10 +3,11 @@ TODO: licencing for this? apache2?
 TODO: licencing data
 
 bread, cook, grapes, lemon: emojipedia twitter emotes (licence??)
-radmusic.ogg: maddnedman
+radmusic.ogg: maddenedman
 
 code? macroquad: https://github.com/not-fl3/macroquad APACHE2
 check the above recursively too.
 
 Roll sound - whoosh by qubodup - https://freesound.org/people/qubodup/sounds/60013/ Creative Commons 0 Licence
 Pop sound - Cartoon Pop (Clean) by unfa - https://freesound.org/people/unfa/sounds/245645/ Creative Commons 0 Licence 
+Enemy death - splat 005 by yottasounds - https://freesound.org/people/yottasounds/sounds/232135/ Creative Commons 0 Licence
