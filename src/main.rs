@@ -33,7 +33,7 @@ const TICKS_BETWEEN_WAVES_MIN: i32 = TICKS_PER_SEC * 5;
 
 fn make_conf() -> Conf {
     Conf {
-        window_title: "roll and dice".to_string(),
+        window_title: "roll and dice (v1)".to_string(),
         window_width: 1280,
         window_height: 720,
         // high DPI breaks viewport code in macroquad! something to do with either the measurements
