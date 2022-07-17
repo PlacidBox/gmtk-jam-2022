@@ -556,13 +556,6 @@ fn render(state: &GameState, ass: &Assets) {
     macroquad::camera::set_camera(&x);
 
     draw_texture(ass.background, 0.0, 0.0, WHITE);
-    draw_text(
-        &format!("A:{0} T:{1}", window_aspect, TARGET_ASPECT),
-        20.,
-        200.,
-        20.,
-        WHITE,
-    );
 
     draw_text("WASD to move. Space to roll", 20., 40., 20.0, WHITE);
     draw_text(
