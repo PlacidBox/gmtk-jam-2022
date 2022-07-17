@@ -11,5 +11,9 @@ Install a recent version of rust, and `cargo run`. To check the web version:
 
 ```
 cargo build --target wasm32-unknown-unknown --release
+```
+copy the wasm build output from `target/wasm32-unknown-unknown/release/game.wasm` to `docs`
+```
+cd docs
 basic-http-server.exe .
 ```
