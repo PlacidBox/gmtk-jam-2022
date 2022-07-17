@@ -27,13 +27,13 @@ impl Default for Wave {
     }
 }
 
-static SET_WAVES: [Wave; 6] = [
+static SET_WAVES: [Wave; 10] = [
     Wave::lems(1, 1),
-    Wave::lems(1, 1),
+    Wave::lems(3, 3),
     Wave::lems(4, 6),
-    Wave::lems(4, 10),
+    Wave::lems(4, 6),
     Wave {
-        lemons: (4, 10),
+        lemons: (4, 4),
         grapes: (1, 2),
         breads: (1, 1),
     },
@@ -42,14 +42,41 @@ static SET_WAVES: [Wave; 6] = [
         grapes: (3, 3),
         breads: (1, 1),
     },
+    Wave::lems(1, 1),
+    Wave::lems(1, 1),
+    Wave::lems(4, 6),
+    Wave {
+        lemons: (0, 0),
+        grapes: (5, 5),
+        breads: (3, 3),
+    },
 ];
 
-static LATE_GAME_WAVES: [Wave; 2] = [
-    Wave::lems(10, 20),
+static LATE_GAME_WAVES: [Wave; 5] = [
+    Wave {
+        lemons: (10, 20),
+        grapes: (0, 1),
+        breads: (0, 1),
+    },
     Wave {
         lemons: (0, 3),
         grapes: (5, 10),
+        breads: (0, 1),
+    },
+    Wave {
+        lemons: (0, 0),
+        grapes: (0, 2),
+        breads: (5, 10),
+    },
+    Wave {
+        lemons: (2, 5),
+        grapes: (0, 4),
         breads: (0, 2),
+    },
+    Wave {
+        lemons: (2, 5),
+        grapes: (0, 1),
+        breads: (0, 1),
     },
 ];
 
