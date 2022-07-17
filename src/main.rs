@@ -3,11 +3,9 @@ mod assets;
 mod waves;
 
 // TODO
-// - at least 2 new enemies (grapes, bread stick)
-//      - bread sticks charge and make a sound, then run at you really quick without changing
-//          direction.
 // - better knife hitbox for the chef, so it's easir to kill things on a diagonals
 // - tweak wave spawning to make the game 'fun'
+// - animate the colour of bullets so that they're obviously not killable. find a better sprite too
 
 use assets::Assets;
 
@@ -110,6 +108,7 @@ struct GameState {
     lemons: Vec<Lemon>,
     grapes: Vec<Grape>,
     bullets: Vec<Bullet>,
+    breads: Vec<Bread>,
 }
 
 impl GameState {
@@ -142,6 +141,15 @@ impl GameState {
         let new_grape = Grape::new(rand_spawn_pos(self.player_pos));
         self.grapes.push(new_grape);
     }
+
+    fn spawn_bread(&mut self) {
+        if self.breads.len() >= BREADS_MAX {
+            return;
+        }
+
+        let new_bread = Bread::new(self.player_pos);
+        self.breads.push(new_bread);
+    }
 }
 
 impl Default for GameState {
@@ -164,7 +172,8 @@ impl Default for GameState {
 
             lemons: Vec::with_capacity(LEMONS_MAX),
             grapes: Vec::with_capacity(GRAPES_MAX),
-            bullets: Vec::new(),
+            bullets: Vec::with_capacity(128),
+            breads: Vec::with_capacity(BREADS_MAX),
         }
     }
 }
@@ -237,11 +246,13 @@ fn tick_knife(state: &mut GameState) {
 fn tick_check_enemy_death(state: &mut GameState, ass: &Assets) {
     const LEMON_KILL_DIST_SQ: f32 = KNIFE_RADIUS * KNIFE_RADIUS + LEMON_RADIUS * LEMON_RADIUS;
     const GRAPE_KILL_DIST_SQ: f32 = KNIFE_RADIUS * KNIFE_RADIUS + GRAPE_RADIUS * GRAPE_RADIUS;
+    const BREAD_KILL_DIST_SQ: f32 = KNIFE_RADIUS * KNIFE_RADIUS + BREAD_RADIUS * BREAD_RADIUS;
 
     let kill_zone = state.knife_pos;
 
     let initial_lem_len = state.lemons.len();
     let initial_grape_len = state.grapes.len();
+    let initial_bread_len = state.breads.len();
 
     state
         .lemons
@@ -251,6 +262,10 @@ fn tick_check_enemy_death(state: &mut GameState, ass: &Assets) {
         .grapes
         .retain(|g| g.pos.distance_squared(kill_zone) > GRAPE_KILL_DIST_SQ);
 
+    state
+        .breads
+        .retain(|b| b.pos.distance_squared(kill_zone) > BREAD_KILL_DIST_SQ);
+
     // bullets aren't killed by knife, but when going out of bounds
     state
         .bullets
@@ -258,8 +273,9 @@ fn tick_check_enemy_death(state: &mut GameState, ass: &Assets) {
 
     let any_lemons_died = state.lemons.len() != initial_lem_len;
     let any_grapes_died = state.grapes.len() != initial_grape_len;
+    let any_breads_died = state.breads.len() != initial_bread_len;
 
-    if any_lemons_died || any_grapes_died {
+    if any_lemons_died || any_grapes_died || any_breads_died {
         play_sound_once(ass.enemy_death);
     }
 }
@@ -277,6 +293,7 @@ fn tick_spawner(state: &mut GameState) {
 
     let num_lemons = gen_range(nw.lemons.0, nw.lemons.1);
     let num_grapes = gen_range(nw.grapes.0, nw.grapes.1);
+    let num_breads = gen_range(nw.breads.0, nw.breads.1);
 
     for _ in 0..num_lemons {
         state.spawn_lemon();
@@ -284,6 +301,10 @@ fn tick_spawner(state: &mut GameState) {
 
     for _ in 0..num_grapes {
         state.spawn_grape();
+    }
+
+    for _ in 0..num_breads {
+        state.spawn_bread();
     }
 }
 
@@ -299,11 +320,16 @@ fn tick_enemies(state: &mut GameState, ass: &Assets) {
     for b in &mut state.bullets {
         b.tick();
     }
+
+    for b in &mut state.breads {
+        b.tick(state.player_pos, ass);
+    }
 }
 
 fn check_player_death(state: &GameState) -> bool {
     const LEMON_KILL_DIST_SQ: f32 = PLAYER_RADIUS * PLAYER_RADIUS + LEMON_RADIUS * LEMON_RADIUS;
     const BULLET_KILL_DIST_SQ: f32 = PLAYER_RADIUS * PLAYER_RADIUS + BULLET_RADIUS * BULLET_RADIUS;
+    const BREAD_KILL_DIST_SQ: f32 = PLAYER_RADIUS * PLAYER_RADIUS + BREAD_RADIUS * BREAD_RADIUS;
 
     let kill_zone = state.player_pos;
 
@@ -319,6 +345,12 @@ fn check_player_death(state: &GameState) -> bool {
         }
     }
 
+    for b in &state.breads {
+        if b.pos.distance_squared(kill_zone) < BREAD_KILL_DIST_SQ {
+            return true;
+        }
+    }
+
     false
 }
 
@@ -328,7 +360,7 @@ const LEMONS_MAX: usize = 64;
 const LEMON_SPEED_WANDER: f32 = 0.5;
 const LEMON_WANDER_CLOSE: f32 = 10.0;
 const LEMON_WANDER_SQ: f32 = LEMON_WANDER_CLOSE * LEMON_WANDER_CLOSE;
-const LEMON_SPEED_ATTACK: f32 = 2.0;
+const LEMON_SPEED_ATTACK: f32 = 1.8;
 const LEMON_ATTACKS_AFTER_MIN: i32 = TICKS_PER_SEC * 3;
 const LEMON_ATTACKS_AFTER_MAX: i32 = TICKS_PER_SEC * 20;
 const LEMON_RADIUS: f32 = 10.0;
@@ -434,6 +466,52 @@ impl Bullet {
     }
 }
 
+const BREADS_MAX: usize = 10;
+const BREAD_RADIUS: f32 = 20.0;
+const BREAD_IDLE_MIN: i32 = 4 * TICKS_PER_SEC;
+const BREAD_IDLE_MAX: i32 = 6 * TICKS_PER_SEC;
+const BREAD_CHANGE_WARN_TICKS: i32 = 3 * TICKS_PER_SEC;
+const BREAD_SPEED: f32 = 8.0;
+const BREAD_SPEED_SQ: f32 = BREAD_SPEED * BREAD_SPEED;
+
+struct Bread {
+    pos: Vec2,
+    ticks_until_charge: i32,
+    attacking: Vec2,
+}
+
+impl Bread {
+    fn new(player_pos: Vec2) -> Self {
+        Self {
+            pos: rand_spawn_pos(player_pos),
+            ticks_until_charge: BREAD_IDLE_MIN,
+            attacking: vec2(0.0, 0.0),
+        }
+    }
+
+    fn tick(&mut self, player_pos: Vec2, ass: &Assets) {
+        if self.ticks_until_charge > 0 {
+            self.ticks_until_charge -= 1;
+            if self.ticks_until_charge == BREAD_CHANGE_WARN_TICKS {
+                play_sound_once(ass.bread_attack);
+            } else if self.ticks_until_charge == 0 {
+                self.attacking = player_pos;
+            }
+            return;
+        }
+
+        // otherwise, attacking. move towards target position at bread_speed.
+        if self.pos.distance_squared(self.attacking) >= BREAD_SPEED_SQ {
+            let dir = (self.attacking - self.pos).normalize();
+            self.pos += dir * BREAD_SPEED;
+        } else {
+            // if we're within one tick of target, just teleport there and go back to being idle.
+            self.pos = self.attacking;
+            self.ticks_until_charge = gen_range(BREAD_IDLE_MIN, BREAD_IDLE_MAX);
+        }
+    }
+}
+
 fn ensure_in_bounds(pos: &mut Vec2) {
     pos.x = pos.x.clamp(0.0, WORLD_WIDTH);
     pos.y = pos.y.clamp(0.0, WORLD_HEIGHT);
@@ -517,6 +595,20 @@ fn render(state: &GameState, ass: &Assets) {
             l.pos.y - LEMON_RADIUS,
             WHITE,
             lem_params.clone(),
+        );
+    }
+
+    let bread_params = DrawTextureParams {
+        dest_size: Some(vec2(BREAD_RADIUS, BREAD_RADIUS) * 2.0),
+        ..Default::default()
+    };
+    for b in &state.breads {
+        draw_texture_ex(
+            ass.bread,
+            b.pos.x - BREAD_RADIUS,
+            b.pos.y - BREAD_RADIUS,
+            WHITE,
+            bread_params.clone(),
         );
     }
 

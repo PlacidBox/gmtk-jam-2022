@@ -4,6 +4,7 @@ pub struct Wave {
     // pair of min/max number to spawn
     pub lemons: (u8, u8),
     pub grapes: (u8, u8),
+    pub breads: (u8, u8),
 }
 
 impl Wave {
@@ -11,6 +12,7 @@ impl Wave {
         Wave {
             lemons: (min, max),
             grapes: (0, 0),
+            breads: (0, 0),
         }
     }
 }
@@ -20,6 +22,7 @@ impl Default for Wave {
         Self {
             lemons: (0, 0),
             grapes: (0, 0),
+            breads: (0, 0),
         }
     }
 }
@@ -32,10 +35,12 @@ static SET_WAVES: [Wave; 6] = [
     Wave {
         lemons: (4, 10),
         grapes: (1, 2),
+        breads: (1, 1),
     },
     Wave {
         lemons: (1, 2),
         grapes: (3, 3),
+        breads: (1, 1),
     },
 ];
 
@@ -44,6 +49,7 @@ static LATE_GAME_WAVES: [Wave; 2] = [
     Wave {
         lemons: (0, 3),
         grapes: (5, 10),
+        breads: (0, 2),
     },
 ];
 
