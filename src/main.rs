@@ -36,7 +36,10 @@ fn make_conf() -> Conf {
         window_title: "roll and dice".to_string(),
         window_width: 1280,
         window_height: 720,
-        high_dpi: true,
+        // high DPI breaks viewport code in macroquad! something to do with either the measurements
+        // of the window being off, or something else? setting a custom viewport of
+        // (0, 0, width, height) ends up giving a sub-section of the screen, though :(
+        high_dpi: false,
         ..Default::default()
     }
 }
@@ -526,9 +529,7 @@ fn rand_spawn_pos(avoid_pos: Vec2) -> Vec2 {
 }
 
 fn render(state: &GameState, ass: &Assets) {
-    draw_texture(ass.background, 0.0, 0.0, WHITE);
-
-    let x = Camera2D::from_display_rect(Rect {
+    let mut x = Camera2D::from_display_rect(Rect {
         x: 0.0,
         y: 0.0,
         w: WORLD_WIDTH,
@@ -536,7 +537,32 @@ fn render(state: &GameState, ass: &Assets) {
     });
 
     // FUTURE: set viewport to maintain a constant aspect ratio, rather than stretching.
+    const TARGET_ASPECT: f32 = WORLD_WIDTH as f32 / WORLD_HEIGHT as f32;
+    let window_aspect = screen_width() / screen_height();
+    let viewport = if window_aspect < TARGET_ASPECT {
+        // window is squarer than we want, need to add borders at top and bottom
+        let sw = screen_width();
+        let sh = sw / TARGET_ASPECT;
+        let excess_height = (screen_height() - sh) as i32;
+        (0, excess_height / 2, sw as i32, sh as i32)
+    } else {
+        // window is wider than we want. add borders at side
+        let sh = screen_height();
+        let sw = sh * TARGET_ASPECT;
+        let excess_width = (screen_width() - sw) as i32;
+        (excess_width / 2, 0, sw as i32, sh as i32)
+    };
+    x.viewport = Some(viewport);
     macroquad::camera::set_camera(&x);
+
+    draw_texture(ass.background, 0.0, 0.0, WHITE);
+    draw_text(
+        &format!("A:{0} T:{1}", window_aspect, TARGET_ASPECT),
+        20.,
+        200.,
+        20.,
+        WHITE,
+    );
 
     draw_text("WASD to move. Space to roll", 20., 40., 20.0, WHITE);
     draw_text(
