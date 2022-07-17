@@ -2,10 +2,6 @@
 mod assets;
 mod waves;
 
-// TODO
-// - better knife hitbox for the chef, so it's easir to kill things on a diagonals
-// - tweak wave spawning to make the game 'fun'
-
 use assets::Assets;
 
 use macroquad::audio::{play_sound_once, PlaySoundParams};
