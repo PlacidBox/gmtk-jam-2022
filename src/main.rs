@@ -5,7 +5,6 @@ mod waves;
 // TODO
 // - better knife hitbox for the chef, so it's easir to kill things on a diagonals
 // - tweak wave spawning to make the game 'fun'
-// - animate the colour of bullets so that they're obviously not killable. find a better sprite too
 
 use assets::Assets;
 
@@ -630,12 +629,16 @@ fn render(state: &GameState, ass: &Assets) {
         dest_size: Some(vec2(BULLET_RADIUS, BULLET_RADIUS) * 2.0),
         ..Default::default()
     };
+
+    let t = (state.tick as f32 * 0.2).cos() * 0.3;
+    let bull_colour = Color::new(0.7 + t, 0.7 + t, 0.7 + t, 1.);
+
     for b in &state.bullets {
         draw_texture_ex(
             ass.bullet,
             b.pos.x - BULLET_RADIUS,
             b.pos.y - BULLET_RADIUS,
-            WHITE,
+            bull_colour,
             bull_params.clone(),
         );
     }
